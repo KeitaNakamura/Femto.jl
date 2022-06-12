@@ -126,3 +126,27 @@ end
     nargs == 6 && return build_element_matrix
     error("wrong number of arguments in `integrate`, use `(eltindex, u, ∇u, v, ∇v, dΩ)` for matrix or `(eltindex, v, ∇v, dΩ)` for vector")
 end
+
+###############
+# interpolate #
+###############
+
+_otimes(x, y) = x * y
+_otimes(x::Vec, y::Vec) = x ⊗ y
+
+function interpolate(element::Element, uᵢ::AbstractVector, qp::Int)
+    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds begin
+        N, dNdx = element.N[qp], element.dNdx[qp]
+        u = mapreduce(_otimes, +, uᵢ, N)
+        dudx = mapreduce(_otimes, +, uᵢ, dNdx)
+    end
+    u, dudx
+end
+
+function interpolate(element::Element, uᵢ::AbstractVector, ξ::Vec)
+    N, dNdx = values_gradients(get_shape(element), ξ)
+    u = mapreduce(_otimes, +, uᵢ, N)
+    dudx = mapreduce(_otimes, +, uᵢ, dNdx)
+    u, dudx
+end
