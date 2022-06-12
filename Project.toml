@@ -13,5 +13,6 @@ Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 [compat]
 Reexport = "1"
 StaticArrays = "1"
-StructArrays = "~0.6"
-Tensorial = "~0.12"
+StructArrays = "0.6"
+Tensorial = "0.12"
+julia = "1.7"
