@@ -26,6 +26,7 @@ function integrate!(f, A::AbstractMatrix, grid::Grid{T}) where {T}
     @assert size(A) == (n,n)
     element = Element{T}(get_fieldtype(grid), get_shape(grid))
     for (eltindex, conn) in enumerate(get_connectivities(grid))
+        update!(element, get_nodes(grid)[conn])
         Ke = integrate(f, element, eltindex)
         ginds = dofindices(element, conn)
         add!(A, ginds, ginds, Ke)

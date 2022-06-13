@@ -70,7 +70,7 @@ function integrate(f, element::Element, eltindex = nothing)
             N, dNdx = transform_field(get_fieldtype(element), element.N[qp], element.dNdx[qp])
             detJdΩ = element.detJdΩ[qp]
         end
-        build(f, eltindex, N, dNdx, detJdΩ, Val(num_dofs(element)))
+        build(f, qp, eltindex, N, dNdx, detJdΩ, Val(num_dofs(element)))
     end
 end
 
@@ -92,22 +92,22 @@ transform_field(::ScalarField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) 
 end
 
 # build elementvector/elementmatrix
-@generated function build_element_vector(f, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_vector(f, qp, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
     if eltindex === Nothing
         exps = [:(f(N[$i], dNdx[$i], detJdΩ)) for i in 1:L]
     else
-        exps = [:(f(eltindex, N[$i], dNdx[$i], detJdΩ)) for i in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$i], dNdx[$i], detJdΩ)) for i in 1:L]
     end
     quote
         @_inline_meta
         @inbounds SVector{$L}($(exps...))
     end
 end
-@generated function build_element_matrix(f, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_matrix(f, qp, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
     if eltindex === Nothing
         exps = [:(f(N[$j], dNdx[$j], N[$i], dNdx[$i], detJdΩ)) for i in 1:L, j in 1:L]
     else
-        exps = [:(f(eltindex, N[$j], dNdx[$j], N[$i], dNdx[$i], detJdΩ)) for i in 1:L, j in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], dNdx[$j], N[$i], dNdx[$i], detJdΩ)) for i in 1:L, j in 1:L]
     end
     quote
         @_inline_meta
@@ -124,7 +124,7 @@ end
     nargs = last(methods(f)).nargs - 1
     nargs == 4 && return build_element_vector
     nargs == 6 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(eltindex, u, ∇u, v, ∇v, dΩ)` for matrix or `(eltindex, v, ∇v, dΩ)` for vector")
+    error("wrong number of arguments in `integrate`, use `(index, u, ∇u, v, ∇v, dΩ)` for matrix or `(index, v, ∇v, dΩ)` for vector")
 end
 
 ###############
