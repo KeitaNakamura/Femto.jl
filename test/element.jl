@@ -45,14 +45,14 @@
                 dΩ = element.detJdΩ[qp]
                 N' * N * dΩ
             end
-            @test integrate((u,∇u,v,∇v,dΩ) -> (u * v)*dΩ, element) ≈ M
+            @test integrate((u,∇u,v,∇v,dΩ) -> (v * u)*dΩ, element) ≈ M
             # stiffness matrix
             K = sum(1:Femto.num_quadpoints(element)) do qp
                 B = reduce(hcat, element.dNdx[qp])
                 dΩ = element.detJdΩ[qp]
                 B' * B * dΩ
             end
-            @test integrate((u,∇u,v,∇v,dΩ) -> (∇u ⋅ ∇v)*dΩ, element) ≈ K
+            @test integrate((u,∇u,v,∇v,dΩ) -> (∇v ⋅ ∇u)*dΩ, element) ≈ K
             # element vector
             F = sum(1:Femto.num_quadpoints(element)) do qp
                 N = element.N[qp]
@@ -60,6 +60,41 @@
                 N * dΩ
             end
             @test integrate((v,∇v,dΩ) -> v*dΩ, element) ≈ F
+        end
+        @testset "VectorField" begin
+            element = Element(VectorField(), Quad4())
+            update!(element, [Vec(0.0,0.0), Vec(1.0,0.5), Vec(2.0,1.0), Vec(0.5,0.8)])
+            # mass matrix
+            M = sum(1:Femto.num_quadpoints(element)) do qp
+                N1, N2, N3, N4 = element.N[qp]
+                N = [N1 0  N2 0  N3 0  N4 0
+                     0  N1 0  N2 0  N3 0  N4]
+                dΩ = element.detJdΩ[qp]
+                N' * N * dΩ
+            end
+            @test integrate((u,∇u,v,∇v,dΩ) -> (v ⋅ u)*dΩ, element) ≈ M
+            # stiffness matrix
+            ke = rand(SymmetricFourthOrderTensor{2})
+            K = sum(1:Femto.num_quadpoints(element)) do qp
+                (dNdx1,dNdy1), (dNdx2,dNdy2), (dNdx3,dNdy3), (dNdx4,dNdy4) = element.dNdx[qp]
+                B = [dNdx1 0     dNdx2 0     dNdx3 0     dNdx4 0
+                     0     dNdy1 0     dNdy2 0     dNdy3 0     dNdy4
+                     dNdy1 dNdx1 dNdy2 dNdx2 dNdy3 dNdx3 dNdy4 dNdx4]
+                dΩ = element.detJdΩ[qp]
+                B' * tovoigt(ke) *  B * dΩ
+            end
+            @test integrate((u,∇u,v,∇v,dΩ) -> (symmetric(∇v) ⊡ ke ⊡ symmetric(∇u))*dΩ, element) ≈ K
+            # element vector
+            σ = rand(SymmetricSecondOrderTensor{2})
+            F = sum(1:Femto.num_quadpoints(element)) do qp
+                (dNdx1,dNdy1), (dNdx2,dNdy2), (dNdx3,dNdy3), (dNdx4,dNdy4) = element.dNdx[qp]
+                B = [dNdx1 0     dNdx2 0     dNdx3 0     dNdx4 0
+                     0     dNdy1 0     dNdy2 0     dNdy3 0     dNdy4
+                     dNdy1 dNdx1 dNdy2 dNdx2 dNdy3 dNdx3 dNdy4 dNdx4]
+                dΩ = element.detJdΩ[qp]
+                B' * tovoigt(σ) * dΩ
+            end
+            @test integrate((v,∇v,dΩ) -> (σ ⊡ symmetric(∇v))*dΩ, element) ≈ F
         end
     end
 end
