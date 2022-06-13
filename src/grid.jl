@@ -17,30 +17,6 @@ num_elements(grid::Grid) = length(get_connectivities(grid))
 num_dofs(grid::Grid{<: Any, <: Any, ScalarField}) = num_nodes(grid)
 num_dofs(grid::Grid{<: Any, <: Any, VectorField}) = num_nodes(grid) * get_dimension(grid)
 
-function create_sparsematrix(grid::Grid)
-    SparseMatrixIJV(num_nodes(get_shape(grid)) * num_elements(grid))
-end
-
-function integrate!(f, A::AbstractMatrix, grid::Grid{T}) where {T}
-    n = num_dofs(grid)
-    @assert size(A) == (n,n)
-    element = Element{T}(get_fieldtype(grid), get_shape(grid))
-    for (eltindex, conn) in enumerate(get_connectivities(grid))
-        update!(element, get_nodes(grid)[conn])
-        Ke = integrate(f, element, eltindex)
-        ginds = dofindices(element, conn)
-        add!(A, ginds, ginds, Ke)
-    end
-end
-
-function integrate(f, grid::Grid)
-    n = num_dofs(grid)
-    sizehint = num_nodes(get_shape(grid)) * num_elements(grid)
-    A = SparseMatrixIJV(n, n; sizehint)
-    integrate!(f, A, grid)
-    A
-end
-
 #################
 # generate_grid #
 #################
@@ -69,6 +45,30 @@ function generate_grid(ftype::FieldType, axes::Vararg{AbstractVector, dim}) wher
         Index(broadcast(getindex, Ref(LinearIndices(dims)), _connectivity(I)))
     end
     Grid(ftype, vec(nodes), _shapetype(Val(dim)), vec(connectivities))
+end
+
+##############
+# integrate! #
+##############
+
+function integrate!(f, A::AbstractMatrix, grid::Grid{T}) where {T}
+    n = num_dofs(grid)
+    @assert size(A) == (n,n)
+    element = Element{T}(get_fieldtype(grid), get_shape(grid))
+    for (eltindex, conn) in enumerate(get_connectivities(grid))
+        update!(element, get_nodes(grid)[conn])
+        Ke = integrate(f, element, eltindex)
+        ginds = dofindices(element, conn)
+        add!(A, ginds, ginds, Ke)
+    end
+end
+
+function integrate(f, grid::Grid)
+    n = num_dofs(grid)
+    sizehint = num_nodes(get_shape(grid)) * num_elements(grid)
+    A = SparseMatrixIJV(n, n; sizehint)
+    integrate!(f, A, grid)
+    A
 end
 
 #################
