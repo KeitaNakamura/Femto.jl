@@ -20,6 +20,7 @@ export
     integrate,
     # Shape
     Quad4,
+    Hex8,
     Tri6,
     # Grid
     Grid,

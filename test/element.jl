@@ -2,7 +2,7 @@
     @testset "interpolate" begin
         for T in (Float64, Float32)
             TOL = sqrt(eps(T))
-            for shape in (Quad4(), Tri6())
+            for shape in (Quad4(), Hex8(), Tri6())
                 dim = Femto.get_dimension(shape)
                 element = Element{T}(ScalarField(), shape)
                 for qp in Femto.num_quadpoints(element)
@@ -24,7 +24,7 @@
         end
     end
     @testset "dofindices" begin
-        for shape in (Quad4(), Tri6())
+        for shape in (Quad4(), Hex8(), Tri6())
             dim = Femto.get_dimension(shape)
             conn = Femto.Index(1,3,6)
             # scalar field
@@ -34,6 +34,8 @@
             element = Element(VectorField(), shape)
             if dim == 2
                 @test (@inferred Femto.dofindices(element, conn)) == Femto.Index(1,2,5,6,11,12)
+            elseif dim == 3
+                @test (@inferred Femto.dofindices(element, conn)) == Femto.Index(1,2,3,7,8,9,16,17,18)
             end
         end
     end

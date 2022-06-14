@@ -63,6 +63,59 @@ function quadweights(::Type{T}, ::Quad4) where {T}
 end
 
 ########
+# Hex8 #
+########
+
+struct Hex8 <: Shape{3} end
+
+@pure num_nodes(::Hex8) = 8
+@pure num_quadpoints(::Hex8) = 8
+
+function get_local_node_coordinates(::Type{T}, ::Hex8) where {T}
+    SVector{8, Vec{3, T}}(
+        (-1.0, -1.0, -1.0),
+        ( 1.0, -1.0, -1.0),
+        ( 1.0,  1.0, -1.0),
+        (-1.0,  1.0, -1.0),
+        (-1.0, -1.0,  1.0),
+        ( 1.0, -1.0,  1.0),
+        ( 1.0,  1.0,  1.0),
+        (-1.0,  1.0,  1.0),
+    )
+end
+
+function Base.values(::Hex8, X::Vec{3})
+    ξ, η, ζ = X
+    SVector{8}(
+        (1 - ξ) * (1 - η) * (1 - ζ) / 8,
+        (1 + ξ) * (1 - η) * (1 - ζ) / 8,
+        (1 + ξ) * (1 + η) * (1 - ζ) / 8,
+        (1 - ξ) * (1 + η) * (1 - ζ) / 8,
+        (1 - ξ) * (1 - η) * (1 + ζ) / 8,
+        (1 + ξ) * (1 - η) * (1 + ζ) / 8,
+        (1 + ξ) * (1 + η) * (1 + ζ) / 8,
+        (1 - ξ) * (1 + η) * (1 + ζ) / 8,
+    )
+end
+
+function quadpoints(::Type{T}, ::Hex8) where {T}
+    ξ = η = ζ = √3 / 3
+    NTuple{8, Vec{3, T}}((
+        (-ξ, -η, -ζ),
+        ( ξ, -η, -ζ),
+        ( ξ,  η, -ζ),
+        (-ξ,  η, -ζ),
+        (-ξ, -η,  ζ),
+        ( ξ, -η,  ζ),
+        ( ξ,  η,  ζ),
+        (-ξ,  η,  ζ),
+    ))
+end
+function quadweights(::Type{T}, ::Hex8) where {T}
+    NTuple{8, T}((1, 1, 1, 1, 1, 1, 1, 1))
+end
+
+########
 # Tri6 #
 ########
 
