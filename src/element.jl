@@ -141,12 +141,12 @@ function interpolate(element::Element, uᵢ::AbstractVector, qp::Int)
         u = mapreduce(_otimes, +, uᵢ, N)
         dudx = mapreduce(_otimes, +, uᵢ, dNdx)
     end
-    u, dudx
+    dual(u, dudx)
 end
 
 function interpolate(element::Element, uᵢ::AbstractVector, ξ::Vec)
     N, dNdx = values_gradients(get_shape(element), ξ)
     u = mapreduce(_otimes, +, uᵢ, N)
     dudx = mapreduce(_otimes, +, uᵢ, dNdx)
-    u, dudx
+    dual(u, dudx)
 end

@@ -10,11 +10,13 @@
                     @test sum(element.N[qp]) ≈ 1
                     @test norm(sum(element.dNdx[qp])) < TOL
                     # interpolate
-                    x, dxdx = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), qp)
+                    x = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), qp)
+                    dxdx = ∇(x)
                     @test x ≈ Femto.quadpoints(shape)[qp] atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL
                     x′ = rand(Vec{dim, T})
-                    x, dxdx = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), x′)
+                    x = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), x′)
+                    dxdx = ∇(x)
                     @test x ≈ x′ atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL
                 end

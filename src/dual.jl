@@ -34,3 +34,10 @@ Base.Tuple(x::VecMat) = Tuple(x.vector)
 end
 
 ∇(x::VecMat) = x.matrix
+
+########
+# dual #
+########
+
+dual(u::Real, dudx::Vec) = RealVec(u, dudx)
+dual(u::Vec, dudx::Mat) = VecMat(u, dudx)
