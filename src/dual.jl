@@ -8,9 +8,6 @@ struct RealVec{T, dim} <: Real
 end
 
 Base.promote_rule(::Type{<: RealVec{T}}, ::Type{U}) where {T <: Real, U <: Real} = promote_type(T, U)
-Base.promote_rule(::Type{T}, ::Type{<: RealVec{U}}) where {T <: Real, U <: Real} = promote_type(T, U)
-Base.promote_rule(::Type{<: RealVec{T}}, ::Type{<: RealVec{U}}) where {T <: Real, U <: Real} = promote_type(T, U)
-
 Base.convert(::Type{T}, x::RealVec) where {T <: Real} = convert(T, x.scalar)
 
 for op in (:+, :-, :*, :/)
