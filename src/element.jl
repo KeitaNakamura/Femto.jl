@@ -67,47 +67,47 @@ function integrate(f, element::Element, eltindex = nothing)
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
-            N, dNdx = transform_field(get_fieldtype(element), element.N[qp], element.dNdx[qp])
+            N = convert_to_dual(get_fieldtype(element), element.N[qp], element.dNdx[qp])
             detJdΩ = element.detJdΩ[qp]
         end
-        build(f, qp, eltindex, N, dNdx, detJdΩ, Val(num_dofs(element)))
+        build(f, qp, eltindex, N, detJdΩ, Val(num_dofs(element)))
     end
 end
 
-# transform (N, dNdx) to given field type
-transform_field(::ScalarField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) where {L, T, dim} = (N, dNdx)
-@generated function transform_field(::VectorField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) where {L, T, dim}
-    N_exps = Expr[]
-    dNdx_exps = Expr[]
+# convert to dual
+convert_to_dual(::ScalarField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) where {L, T, dim} = map(RealVec, N, dNdx)
+@generated function convert_to_dual(::VectorField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) where {L, T, dim}
+    exps = Expr[]
     for k in 1:L, d in 1:dim
         vals  = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
         grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
-        push!(N_exps, :(Vec{dim, T}($(vals...))))
-        push!(dNdx_exps, :(Mat{dim, dim, T}($(grads...))))
+        vec = :(Vec{dim, T}($(vals...)))
+        mat = :(Mat{dim, dim, T}($(grads...)))
+        push!(exps, :(VecMat($vec, $mat)))
     end
     quote
         @_inline_meta
-        @inbounds SVector($(N_exps...)), SVector($(dNdx_exps...))
+        @inbounds SVector($(exps...))
     end
 end
 
 # build elementvector/elementmatrix
-@generated function build_element_vector(f, qp, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_vector(f, qp, eltindex, N, detJdΩ, ::Val{L}) where {L}
     if eltindex === Nothing
-        exps = [:(f(N[$i], dNdx[$i], detJdΩ)) for i in 1:L]
+        exps = [:(f(N[$i], detJdΩ)) for i in 1:L]
     else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$i], dNdx[$i], detJdΩ)) for i in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$i], detJdΩ)) for i in 1:L]
     end
     quote
         @_inline_meta
         @inbounds SVector{$L}($(exps...))
     end
 end
-@generated function build_element_matrix(f, qp, eltindex, N, dNdx, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_matrix(f, qp, eltindex, N, detJdΩ, ::Val{L}) where {L}
     if eltindex === Nothing
-        exps = [:(f(N[$j], dNdx[$j], N[$i], dNdx[$i], detJdΩ)) for i in 1:L, j in 1:L]
+        exps = [:(f(N[$j], N[$i], detJdΩ)) for i in 1:L, j in 1:L]
     else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], dNdx[$j], N[$i], dNdx[$i], detJdΩ)) for i in 1:L, j in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], N[$i], detJdΩ)) for i in 1:L, j in 1:L]
     end
     quote
         @_inline_meta
@@ -116,15 +116,15 @@ end
 end
 @pure function build_element_matrix_or_vector(f, eltindex::Nothing)
     nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return build_element_vector
-    nargs == 5 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(u, ∇u, v, ∇v, dΩ)` for matrix or `(v, ∇v, dΩ)` for vector")
+    nargs == 2 && return build_element_vector
+    nargs == 3 && return build_element_matrix
+    error("wrong number of arguments in `integrate`, use `(u, v, dΩ)` for matrix or `(v, dΩ)` for vector")
 end
 @pure function build_element_matrix_or_vector(f, eltindex)
     nargs = last(methods(f)).nargs - 1
-    nargs == 4 && return build_element_vector
-    nargs == 6 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(index, u, ∇u, v, ∇v, dΩ)` for matrix or `(index, v, ∇v, dΩ)` for vector")
+    nargs == 3 && return build_element_vector
+    nargs == 4 && return build_element_matrix
+    error("wrong number of arguments in `integrate`, use `(index, u, v, dΩ)` for matrix or `(index, v, dΩ)` for vector")
 end
 
 ###############

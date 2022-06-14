@@ -9,6 +9,8 @@ using Base: @pure, @_inline_meta
 using SparseArrays
 
 export
+    # dual
+    ∇,
     # field
     ScalarField,
     VectorField,
@@ -28,6 +30,8 @@ const Index{L} = SVector{L, Int}
 abstract type FieldType end
 struct ScalarField <: FieldType end
 struct VectorField <: FieldType end
+
+include("dual.jl")
 
 include("shapes.jl")
 include("element.jl")
