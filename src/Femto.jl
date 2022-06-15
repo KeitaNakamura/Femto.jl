@@ -24,7 +24,8 @@ export
     Tri6,
     # Grid
     Grid,
-    integrate!
+    integrate!,
+    generate_grid
 
 const Index{L} = SVector{L, Int}
 

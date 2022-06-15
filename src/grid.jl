@@ -41,7 +41,7 @@ function generate_grid(ftype::FieldType, axes::Vararg{AbstractVector, dim}) wher
     dims = map(length, axes)
     Eltype = promote_type(map(eltype, axes)...)
     nodes = map(Vec{dim, ifelse(Eltype==Int, Float64, Eltype)}, Iterators.product(axes...))
-    connectivities = map(one(CartesianIndex{dim}):CartesianIndex(dims .- 1)) do I
+    connectivities = map(oneunit(CartesianIndex{dim}):CartesianIndex(dims .- 1)) do I
         Index(broadcast(getindex, Ref(LinearIndices(dims)), _connectivity(I)))
     end
     Grid(ftype, vec(nodes), _shapetype(Val(dim)), vec(connectivities))
