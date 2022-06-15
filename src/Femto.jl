@@ -19,6 +19,7 @@ export
     update!,
     integrate,
     # Shape
+    Line2,
     Quad4,
     Hex8,
     Tri6,

@@ -1,6 +1,11 @@
 @testset "Grid" begin
     @testset "generate_grid" begin
         for ftype in (ScalarField(), VectorField())
+            # dim 1
+            axs = (0:1.0:3.0,)
+            grid = @inferred generate_grid(ScalarField(), axs...)
+            @test Femto.get_nodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
+            @test Femto.get_shape(grid) === Line2()
             # dim 2
             axs = (0:1.0:3.0, 0:0.5:2.0)
             grid = @inferred generate_grid(ScalarField(), axs...)
@@ -21,6 +26,11 @@
     end
     @testset "integrate" begin
         # test with one element
+        # dim 1
+        grid = @inferred generate_grid(ScalarField(), 0:2:2)
+        element = Element(ScalarField(), Line2())
+        inds = only(grid.connectivities)
+        @test Femto.sparse(@inferred integrate((index,u,v,dΩ)->v*u*dΩ, grid)) ≈ integrate((u,v,dΩ)->v*u*dΩ, element)[inds, inds]
         # dim 2
         grid = @inferred generate_grid(ScalarField(), 0:2:2, 1:2:3)
         element = Element(ScalarField(), Quad4())

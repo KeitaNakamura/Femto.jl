@@ -22,6 +22,39 @@ end
 end
 
 #########
+# Line2 #
+#########
+
+struct Line2 <: Shape{1} end
+
+@pure num_nodes(::Line2) = 2
+@pure num_quadpoints(::Line2) = 1
+
+function get_local_node_coordinates(::Type{T}, ::Line2) where {T}
+    SVector{2, Vec{1, T}}(
+        (-1.0,),
+        ( 1.0,),
+    )
+end
+
+function Base.values(::Line2, X::Vec{1})
+    ξ = X[1]
+    SVector{2}(
+        (1 - ξ) / 2,
+        (1 + ξ) / 2,
+    )
+end
+
+function quadpoints(::Type{T}, ::Line2) where {T}
+    NTuple{1, Vec{1, T}}((
+        (0,),
+    ))
+end
+function quadweights(::Type{T}, ::Line2) where {T}
+    NTuple{1, T}((1,))
+end
+
+#########
 # Quad4 #
 #########
 
