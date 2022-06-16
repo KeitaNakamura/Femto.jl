@@ -70,7 +70,7 @@ function integrate(f, element::Element, eltindex = nothing)
             N = convert_to_dual(get_fieldtype(element), element.N[qp], element.dNdx[qp])
             detJdΩ = element.detJdΩ[qp]
         end
-        build(f, qp, eltindex, N, detJdΩ, Val(num_dofs(element)))
+        build(f, qp, eltindex, N, Val(num_dofs(element))) * detJdΩ
     end
 end
 
@@ -92,22 +92,22 @@ convert_to_dual(::ScalarField, N::SVector{L, T}, dNdx::SVector{L, Vec{dim, T}}) 
 end
 
 # build elementvector/elementmatrix
-@generated function build_element_vector(f, qp, eltindex, N, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_vector(f, qp, eltindex, N, ::Val{L}) where {L}
     if eltindex === Nothing
-        exps = [:(f(N[$i], detJdΩ)) for i in 1:L]
+        exps = [:(f(N[$i])) for i in 1:L]
     else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$i], detJdΩ)) for i in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$i])) for i in 1:L]
     end
     quote
         @_inline_meta
         @inbounds SVector{$L}($(exps...))
     end
 end
-@generated function build_element_matrix(f, qp, eltindex, N, detJdΩ, ::Val{L}) where {L}
+@generated function build_element_matrix(f, qp, eltindex, N, ::Val{L}) where {L}
     if eltindex === Nothing
-        exps = [:(f(N[$j], N[$i], detJdΩ)) for i in 1:L, j in 1:L]
+        exps = [:(f(N[$j], N[$i])) for i in 1:L, j in 1:L]
     else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], N[$i], detJdΩ)) for i in 1:L, j in 1:L]
+        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], N[$i])) for i in 1:L, j in 1:L]
     end
     quote
         @_inline_meta
@@ -116,15 +116,15 @@ end
 end
 @pure function build_element_matrix_or_vector(f, eltindex::Nothing)
     nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return build_element_vector
-    nargs == 3 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(u, v, dΩ)` for matrix or `(v, dΩ)` for vector")
+    nargs == 1 && return build_element_vector
+    nargs == 2 && return build_element_matrix
+    error("wrong number of arguments in `integrate`, use `(u, v)` for matrix or `(v)` for vector")
 end
 @pure function build_element_matrix_or_vector(f, eltindex)
     nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return build_element_vector
-    nargs == 4 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(index, u, v, dΩ)` for matrix or `(index, v, dΩ)` for vector")
+    nargs == 2 && return build_element_vector
+    nargs == 3 && return build_element_matrix
+    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
 end
 
 ###############

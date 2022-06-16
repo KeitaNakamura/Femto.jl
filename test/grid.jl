@@ -30,16 +30,16 @@
         grid = @inferred generate_grid(ScalarField(), 0:2:2)
         element = Element(ScalarField(), Line2())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v,dΩ)->v*u*dΩ, grid)) ≈ integrate((u,v,dΩ)->v*u*dΩ, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, grid)) ≈ integrate((u,v)->v*u, element)[inds, inds]
         # dim 2
         grid = @inferred generate_grid(ScalarField(), 0:2:2, 1:2:3)
         element = Element(ScalarField(), Quad4())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v,dΩ)->v*u*dΩ, grid)) ≈ integrate((u,v,dΩ)->v*u*dΩ, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, grid)) ≈ integrate((u,v)->v*u, element)[inds, inds]
         # dim 3
         grid = @inferred generate_grid(ScalarField(), 0:2:2, 1:2:3, 2:2:4)
         element = Element(ScalarField(), Hex8())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v,dΩ)->v*u*dΩ, grid)) ≈ integrate((u,v,dΩ)->v*u*dΩ, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, grid)) ≈ integrate((u,v)->v*u, element)[inds, inds]
     end
 end

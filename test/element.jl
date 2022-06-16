@@ -53,21 +53,21 @@
                 dΩ = element.detJdΩ[qp]
                 N' * N * dΩ
             end
-            @test integrate((u,v,dΩ) -> (v * u)*dΩ, element) ≈ M
+            @test integrate((u,v) -> v*u, element) ≈ M
             # stiffness matrix
             K = sum(1:Femto.num_quadpoints(element)) do qp
                 B = reduce(hcat, element.dNdx[qp])
                 dΩ = element.detJdΩ[qp]
                 B' * B * dΩ
             end
-            @test integrate((u,v,dΩ) -> (∇(v) ⋅ ∇(u))*dΩ, element) ≈ K
+            @test integrate((u,v) -> ∇(v)⋅∇(u), element) ≈ K
             # element vector
             F = sum(1:Femto.num_quadpoints(element)) do qp
                 N = element.N[qp]
                 dΩ = element.detJdΩ[qp]
                 N * dΩ
             end
-            @test integrate((v,dΩ) -> v*dΩ, element) ≈ F
+            @test integrate(v -> v, element) ≈ F
         end
         @testset "VectorField" begin
             element = Element(VectorField(), Quad4())
@@ -80,7 +80,7 @@
                 dΩ = element.detJdΩ[qp]
                 N' * N * dΩ
             end
-            @test integrate((u,v,dΩ) -> (v ⋅ u)*dΩ, element) ≈ M
+            @test integrate((u,v) -> v⋅u, element) ≈ M
             # stiffness matrix
             ke = rand(SymmetricFourthOrderTensor{2})
             K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -91,7 +91,7 @@
                 dΩ = element.detJdΩ[qp]
                 B' * tovoigt(ke) *  B * dΩ
             end
-            @test integrate((u,v,dΩ) -> (symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)))*dΩ, element) ≈ K
+            @test integrate((u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), element) ≈ K
             # element vector
             σ = rand(SymmetricSecondOrderTensor{2})
             F = sum(1:Femto.num_quadpoints(element)) do qp
@@ -102,7 +102,7 @@
                 dΩ = element.detJdΩ[qp]
                 B' * tovoigt(σ) * dΩ
             end
-            @test integrate((v,dΩ) -> (σ ⊡ symmetric(∇(v)))*dΩ, element) ≈ F
+            @test integrate(v -> σ ⊡ symmetric(∇(v)), element) ≈ F
         end
     end
 end
