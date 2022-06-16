@@ -1,30 +1,28 @@
-struct Element{T, dim, F, S <: Shape{dim}, L} # L is number of nodes
-    fieldtype::F
+struct Element{T, dim, S <: Shape{dim}, L} # L is number of nodes
     shape::S
     N::Vector{SVector{L, T}}
     dNdx::Vector{SVector{L, Vec{dim, T}}}
     detJdΩ::Vector{T}
 end
 
-function Element{T}(fieldtype::FieldType, shape::Shape{dim}) where {T, dim}
+function Element{T}(shape::Shape{dim}) where {T, dim}
     n = num_quadpoints(shape)
     L = num_nodes(shape)
     N = zeros(SVector{L, T}, n)
     dNdx = zeros(SVector{L, Vec{dim, T}}, n)
     detJdΩ = zeros(T, n)
-    element = Element(fieldtype, shape, N, dNdx, detJdΩ)
+    element = Element(shape, N, dNdx, detJdΩ)
     update!(element, get_local_node_coordinates(shape))
     element
 end
-Element(fieldtype::FieldType, shape::Shape) = Element{Float64}(fieldtype, shape)
+Element(shape::Shape) = Element{Float64}(shape)
 
 get_shape(elt::Element) = elt.shape
-get_fieldtype(elt::Element) = elt.fieldtype
 get_dimension(elt::Element) = get_dimension(get_shape(elt))
 num_nodes(elt::Element) = num_nodes(get_shape(elt))
 num_quadpoints(elt::Element) = num_quadpoints(get_shape(elt))
-num_dofs(elt::Element{<: Any, <: Any, ScalarField}) = num_nodes(elt)
-num_dofs(elt::Element{<: Any, <: Any, VectorField}) = get_dimension(elt) * num_nodes(elt)
+num_dofs(::ScalarField, elt::Element) = num_nodes(elt)
+num_dofs(::VectorField, elt::Element) = get_dimension(elt) * num_nodes(elt)
 
 # functions for `Shape`
 get_local_node_coordinates(elt::Element{T}) where {T} = get_local_node_coordinates(T, get_shape(elt))
@@ -47,9 +45,9 @@ end
 # dofindices #
 ##############
 
-dofindices(::Element{<: Any, <: Any, ScalarField}, conn::Index) = conn
+dofindices(::ScalarField, ::Element, conn::Index) = conn
 
-@generated function dofindices(::Element{<: Any, dim, VectorField}, conn::Index{L}) where {dim, L}
+@generated function dofindices(::VectorField, ::Element{<: Any, dim}, conn::Index{L}) where {dim, L}
     exps = [:(starts[$i]+$j) for j in 0:dim-1, i in 1:L]
     quote
         @_inline_meta
@@ -62,15 +60,15 @@ end
 # integrate #
 #############
 
-function integrate(f, element::Element, eltindex = nothing)
+function integrate(f, fieldtype::FieldType, element::Element, eltindex = nothing)
     build = build_element_matrix_or_vector(f, eltindex)
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
-            N = convert_to_dual(get_fieldtype(element), element.N[qp], element.dNdx[qp])
+            N = convert_to_dual(fieldtype, element.N[qp], element.dNdx[qp])
             detJdΩ = element.detJdΩ[qp]
         end
-        build(f, qp, eltindex, N, Val(num_dofs(element))) * detJdΩ
+        build(f, qp, eltindex, N, Val(num_dofs(fieldtype, element))) * detJdΩ
     end
 end
 
