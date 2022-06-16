@@ -37,7 +37,7 @@ function update!(element::Element, xᵢ::AbstractVector{<: Vec})
         Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
         J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
         element.N[i] = Nᵢ
-        element.dNdx[i] = inv(J') .⋅ dNᵢdξ
+        element.dNdx[i] = dNᵢdξ .⋅ inv(J)
         element.detJdΩ[i] = w * det(J)
     end
     element
