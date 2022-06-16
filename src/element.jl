@@ -1,11 +1,11 @@
-struct Element{T, dim, S <: Shape{dim}, L} # L is number of nodes
+struct Element{T, dim, shape_dim, S <: Shape{shape_dim}, L} # L is number of nodes
     shape::S
     N::Vector{SVector{L, T}}
     dNdx::Vector{SVector{L, Vec{dim, T}}}
     detJdΩ::Vector{T}
 end
 
-function Element{T}(shape::Shape{dim}) where {T, dim}
+function Element{T, dim}(shape::Shape) where {T, dim}
     n = num_quadpoints(shape)
     L = num_nodes(shape)
     N = zeros(SVector{L, T}, n)
@@ -15,10 +15,12 @@ function Element{T}(shape::Shape{dim}) where {T, dim}
     update!(element, get_local_node_coordinates(shape))
     element
 end
-Element(shape::Shape) = Element{Float64}(shape)
+# use `shape_dim` for `dim` by default
+Element{T}(shape::Shape{shape_dim}) where {T, shape_dim} = Element{T, shape_dim}(shape)
+Element(shape::Shape{shape_dim}) where {shape_dim} = Element{Float64, shape_dim}(shape)
 
 get_shape(elt::Element) = elt.shape
-get_dimension(elt::Element) = get_dimension(get_shape(elt))
+get_dimension(elt::Element{<: Any, dim}) where {dim} = dim
 num_nodes(elt::Element) = num_nodes(get_shape(elt))
 num_quadpoints(elt::Element) = num_quadpoints(get_shape(elt))
 num_dofs(::ScalarField, elt::Element) = num_nodes(elt)

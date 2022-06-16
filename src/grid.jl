@@ -1,5 +1,5 @@
-# currently shape must be unique in grid
-struct Grid{T, dim, S <: Shape{dim}, L}
+# shape must be unique in grid
+struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     nodes::Vector{Vec{dim, T}}
     shape::S
     connectivities::Vector{Index{L}}
@@ -49,10 +49,10 @@ end
 # integrate! #
 ##############
 
-function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T}) where {T}
+function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, dim}) where {T, dim}
     n = num_dofs(fieldtype, grid)
     @assert size(A) == (n,n)
-    element = Element{T}(get_shape(grid))
+    element = Element{T, dim}(get_shape(grid))
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
         Ke = integrate(f, fieldtype, element, eltindex)
