@@ -16,6 +16,8 @@ export
     VectorField,
     # Element
     Element,
+    BodyElement,
+    FaceElement,
     update!,
     integrate,
     # Shape
