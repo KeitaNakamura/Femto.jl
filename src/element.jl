@@ -35,8 +35,7 @@ function update!(element::BodyElement, xᵢ::AbstractVector{<: Vec})
     element
 end
 
-function integrate(f, fieldtype::FieldType, element::BodyElement, eltindex = nothing)
-    build = build_body_element_matrix_or_vector(f, eltindex)
+function integrate(f, fieldtype::FieldType, element::BodyElement, build = infer_build_function(f, element))
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
@@ -44,43 +43,7 @@ function integrate(f, fieldtype::FieldType, element::BodyElement, eltindex = not
             dNdx = convert_shape_gradients(fieldtype, element, element.dNdx[qp])
             detJdΩ = element.detJdΩ[qp]
         end
-        build(f, qp, eltindex, map(dual, dN, dNdx)) * detJdΩ
-    end
-end
-
-# integrate helpers
-@pure function build_body_element_matrix_or_vector(f, eltindex::Nothing)
-    nargs = last(methods(f)).nargs - 1
-    nargs == 1 && return build_body_element_vector
-    nargs == 2 && return build_body_element_matrix
-    error("wrong number of arguments in `integrate`, use `(u, v)` for matrix or `(v)` for vector")
-end
-@pure function build_body_element_matrix_or_vector(f, eltindex)
-    nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return build_body_element_vector
-    nargs == 3 && return build_body_element_matrix
-    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
-end
-@generated function build_body_element_vector(f, qp, eltindex, N::SVector{L}) where {L}
-    if eltindex === Nothing
-        exps = [:(f(N[$i])) for i in 1:L]
-    else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$i])) for i in 1:L]
-    end
-    quote
-        @_inline_meta
-        @inbounds SVector{$L}($(exps...))
-    end
-end
-@generated function build_body_element_matrix(f, qp, eltindex, N::SVector{L}) where {L}
-    if eltindex === Nothing
-        exps = [:(f(N[$j], N[$i])) for i in 1:L, j in 1:L]
-    else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$j], N[$i])) for i in 1:L, j in 1:L]
-    end
-    quote
-        @_inline_meta
-        @inbounds SMatrix{$L, $L}($(exps...))
+        build(f, qp, map(dual, dN, dNdx)) * detJdΩ
     end
 end
 
@@ -121,8 +84,7 @@ function update!(element::FaceElement, xᵢ::AbstractVector{<: Vec})
     element
 end
 
-function integrate(f, fieldtype::FieldType, element::FaceElement, eltindex = nothing)
-    build = build_face_element_vector(f, eltindex)
+function integrate(f, fieldtype::FieldType, element::FaceElement, build = infer_build_function(f, element))
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
@@ -130,30 +92,7 @@ function integrate(f, fieldtype::FieldType, element::FaceElement, eltindex = not
             detJdΩ = element.detJdΩ[qp]
             normal = element.normal[qp]
         end
-        build(f, qp, eltindex, N, normal) * detJdΩ
-    end
-end
-
-# integrate helpers
-@pure function build_face_element_vector(f, eltindex::Nothing)
-    nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return build_face_element_vector
-    error("wrong number of arguments in `integrate`, use `(v, normal)`")
-end
-@pure function build_face_element_vector(f, eltindex)
-    nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return build_face_element_vector
-    error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
-end
-@generated function build_face_element_vector(f, qp, eltindex, N::SVector{L}, normal) where {L}
-    if eltindex === Nothing
-        exps = [:(f(N[$i], normal)) for i in 1:L]
-    else
-        exps = [:(f(CartesianIndex(qp, eltindex), N[$i], normal)) for i in 1:L]
-    end
-    quote
-        @_inline_meta
-        @inbounds SVector{$L}($(exps...))
+        build(f, qp, N, normal) * detJdΩ
     end
 end
 
@@ -227,6 +166,41 @@ end
         @inbounds SVector($(exps...))
     end
 end
+
+#############################################
+# build_element_vector/build_element_matrix #
+#############################################
+
+@generated function build_element_vector(f, qp, N::SVector{L}, args...) where {L}
+    exps = [:(f(qp, N[$i], args...)) for i in 1:L]
+    quote
+        @_inline_meta
+        @inbounds SVector{$L}($(exps...))
+    end
+end
+
+@generated function build_element_matrix(f, qp, N::SVector{L}) where {L}
+    exps = [:(f(qp, N[$j], N[$i])) for i in 1:L, j in 1:L]
+    quote
+        @_inline_meta
+        @inbounds SMatrix{$L, $L}($(exps...))
+    end
+end
+
+@pure function infer_build_function(f, ::Type{<: BodyElement})
+    nargs = last(methods(f)).nargs - 1
+    nargs == 2 && return build_element_vector
+    nargs == 3 && return build_element_matrix
+    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
+end
+
+@pure function infer_build_function(f, ::Type{<: FaceElement})
+    nargs = last(methods(f)).nargs - 1
+    nargs == 3 && return build_element_vector
+    error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
+end
+
+infer_build_function(f, element::Element) = infer_build_function(f, typeof(element))
 
 ###############
 # interpolate #

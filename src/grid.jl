@@ -55,7 +55,11 @@ function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, di
     element = Element{T, dim}(get_shape(grid))
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
-        Ke = integrate(f, fieldtype, element, eltindex)
+        @inline function f′(qp, args...)
+            @_propagate_inbounds_meta
+            f(CartesianIndex(qp, eltindex), args...)
+        end
+        Ke = integrate(f′, fieldtype, element, infer_build_function(f, element))
         ginds = dofindices(fieldtype, element, conn)
         add!(A, ginds, ginds, Ke)
     end

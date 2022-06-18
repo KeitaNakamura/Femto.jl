@@ -53,21 +53,21 @@
                 dΩ = element.detJdΩ[qp]
                 N' * N * dΩ
             end
-            @test integrate((u,v) -> v*u, fieldtype, element) ≈ M
+            @test integrate((qp,u,v) -> v*u, fieldtype, element) ≈ M
             # stiffness matrix
             K = sum(1:Femto.num_quadpoints(element)) do qp
                 B = reduce(hcat, element.dNdx[qp])
                 dΩ = element.detJdΩ[qp]
                 B' * B * dΩ
             end
-            @test integrate((u,v) -> ∇(v)⋅∇(u), fieldtype, element) ≈ K
+            @test integrate((qp,u,v) -> ∇(v)⋅∇(u), fieldtype, element) ≈ K
             # element vector
             F = sum(1:Femto.num_quadpoints(element)) do qp
                 N = element.N[qp]
                 dΩ = element.detJdΩ[qp]
                 N * dΩ
             end
-            @test integrate(v -> v, fieldtype, element) ≈ F
+            @test integrate((qp,v) -> v, fieldtype, element) ≈ F
         end
         @testset "VectorField" begin
             fieldtype = VectorField()
@@ -81,7 +81,7 @@
                 dΩ = element.detJdΩ[qp]
                 N' * N * dΩ
             end
-            @test integrate((u,v) -> v⋅u, fieldtype, element) ≈ M
+            @test integrate((qp,u,v) -> v⋅u, fieldtype, element) ≈ M
             # stiffness matrix
             ke = rand(SymmetricFourthOrderTensor{2})
             K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -92,7 +92,7 @@
                 dΩ = element.detJdΩ[qp]
                 B' * tovoigt(ke) *  B * dΩ
             end
-            @test integrate((u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), fieldtype, element) ≈ K
+            @test integrate((qp,u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), fieldtype, element) ≈ K
             # element vector
             σ = rand(SymmetricSecondOrderTensor{2})
             F = sum(1:Femto.num_quadpoints(element)) do qp
@@ -103,7 +103,7 @@
                 dΩ = element.detJdΩ[qp]
                 B' * tovoigt(σ) * dΩ
             end
-            @test integrate(v -> σ ⊡ symmetric(∇(v)), fieldtype, element) ≈ F
+            @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), fieldtype, element) ≈ F
         end
     end
     @testset "integrate FaceElement" begin
@@ -121,7 +121,7 @@
                 dΩ = element.detJdΩ[qp]
                 p * N * dΩ
             end
-            @test integrate((v,n) -> (p * v), fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> (p * v), fieldtype, element) ≈ F
         end
         @testset "VectorField" begin
             fieldtype = VectorField()
@@ -138,7 +138,7 @@
                 dΩ = element.detJdΩ[qp]
                 p * N' * normal * dΩ
             end
-            @test integrate((v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
             # dim 3
             element = FaceElement(Quad4())
             p = rand()
@@ -153,7 +153,7 @@
                 dΩ = element.detJdΩ[qp]
                 p * N' * normal * dΩ
             end
-            @test integrate((v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
         end
     end
 end
