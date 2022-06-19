@@ -1,10 +1,10 @@
-abstract type Element{T, dim} end
+abstract type Element{T, dim, shape, num_nodes} end
 
 ###############
 # BodyElement #
 ###############
 
-struct BodyElement{T, dim, S <: Shape{dim}, num_nodes} <: Element{T, dim}
+struct BodyElement{T, dim, S <: Shape{dim}, num_nodes} <: Element{T, dim, S, num_nodes}
     shape::S
     N::Vector{SVector{num_nodes, T}}
     dNdx::Vector{SVector{num_nodes, Vec{dim, T}}}
@@ -39,8 +39,8 @@ function integrate(f, fieldtype::FieldType, element::BodyElement, build = infer_
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
-            dN = convert_shape_values(fieldtype, element, element.N[qp])
-            dNdx = convert_shape_gradients(fieldtype, element, element.dNdx[qp])
+            dN = function_values(fieldtype, element, qp)
+            dNdx = function_gradients(fieldtype, element, qp)
             detJdΩ = element.detJdΩ[qp]
         end
         build(f, qp, map(dual, dN, dNdx)) * detJdΩ
@@ -51,7 +51,7 @@ end
 # FaceElement #
 ###############
 
-struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, num_nodes} <: Element{T, dim}
+struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, num_nodes} <: Element{T, dim, S, num_nodes}
     shape::S
     N::Vector{SVector{num_nodes, T}}
     normal::Vector{Vec{dim, T}}
@@ -88,7 +88,7 @@ function integrate(f, fieldtype::FieldType, element::FaceElement, build = infer_
     sum(1:num_quadpoints(element)) do qp
         @_inline_meta
         @inbounds begin
-            N = convert_shape_values(fieldtype, element, element.N[qp])
+            N = function_values(fieldtype, element, qp)
             detJdΩ = element.detJdΩ[qp]
             normal = element.normal[qp]
         end
@@ -134,15 +134,15 @@ dofindices(::ScalarField, ::Element, conn::Index) = conn
     end
 end
 
-################################################
-# convert_shape_values/convert_shape_gradients #
-################################################
+######################################
+# function_values/function_gradients #
+######################################
 
 # ScalarField
-convert_shape_values(::ScalarField, ::Element{T}, N::SVector{<: Any, T}) where {T} = N
-convert_shape_gradients(::ScalarField, ::Element{T, dim}, dNdx::SVector{<: Any, Vec{dim, T}}) where {T, dim} = dNdx
+function_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
+function_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
 # VectorField
-@generated function convert_shape_values(::VectorField, ::Element{T, dim}, N::SVector{L, T}) where {L, T, dim}
+@generated function function_values(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         vals  = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
@@ -151,10 +151,12 @@ convert_shape_gradients(::ScalarField, ::Element{T, dim}, dNdx::SVector{<: Any, 
     end
     quote
         @_inline_meta
-        @inbounds SVector($(exps...))
+        @_propagate_inbounds_meta
+        N = element.N[qp]
+        SVector($(exps...))
     end
 end
-@generated function convert_shape_gradients(::VectorField, ::Element{T, dim}, dNdx::SVector{L, Vec{dim, T}}) where {L, T, dim}
+@generated function function_gradients(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
@@ -163,7 +165,9 @@ end
     end
     quote
         @_inline_meta
-        @inbounds SVector($(exps...))
+        @_propagate_inbounds_meta
+        dNdx = element.dNdx[qp]
+        SVector($(exps...))
     end
 end
 
