@@ -39,7 +39,7 @@ shape_gradients(::TensorStyle, ::ScalarField, element::Element, qp::Int) = (@_pr
 @generated function shape_values(::TensorStyle, ::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
-        vals  = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
+        vals = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
         vec = :(Vec{dim, T}($(vals...)))
         push!(exps, vec)
     end
@@ -123,22 +123,12 @@ end
     error("wrong number of arguments in `integrate`, use `(index, Nv, normal)`")
 end
 
-# shape gradients
+## ShapeGradientMatrix
+# for `symmetric(∇(N))`
 struct ShapeGradientMatrix{m, n, T, L} <: StaticMatrix{m, n, T}
     data::NTuple{L, T}
 end
 @inline Base.getindex(dNdx::ShapeGradientMatrix, i::Int) = (@_propagate_inbounds_meta; dNdx.data[i])
-
-# shape values
-struct ShapeValueMatrix{m, n, T, L, A} <: StaticMatrix{m, n, T}
-    data::NTuple{L, T}
-    dNdx::A
-end
-function ShapeValueMatrix(N::SMatrix{m, n, T, L}, dNdx::A) where {m, n, T, L, A}
-    ShapeValueMatrix{m, n, T, L, A}(Tuple(N), dNdx)
-end
-@inline Base.getindex(N::ShapeValueMatrix, i::Int) = (@_propagate_inbounds_meta; N.data[i])
-∇(N::ShapeValueMatrix) = N.dNdx
 
 # B-matrix
 Bmatrix(dNdx::Vec{1}) = @SMatrix[dNdx[1]]
@@ -159,9 +149,26 @@ function Tensorial.symmetric(dNdx::ShapeGradientMatrix{dim, n}) where {dim, n}
     end)
 end
 
+## ShapeValueMatrix
+# for `∇(N)`
+struct ShapeValueMatrix{m, n, T, L, A} <: StaticMatrix{m, n, T}
+    data::NTuple{L, T}
+    dNdx::A
+end
+function ShapeValueMatrix(N::SMatrix{m, n, T, L}, dNdx::A) where {m, n, T, L, A}
+    ShapeValueMatrix{m, n, T, L, A}(Tuple(N), dNdx)
+end
+function ShapeValueMatrix(N::Adjoint{T, SVector{L, T}}, dNdx::A) where {T, L, A}
+    ShapeValueMatrix{1, L, T, L, A}(Tuple(N), dNdx)
+end
+@inline Base.getindex(N::ShapeValueMatrix, i::Int) = (@_propagate_inbounds_meta; N.data[i])
+∇(N::ShapeValueMatrix) = N.dNdx
+ # Nv' becomes L×1 vector without this `adjoint`
+LinearAlgebra.adjoint(N::ShapeValueMatrix{1}) = SVector(N.data)
+
 ## shape values and gradients
 # ScalarField
-shape_values(::MatrixStyle, ::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; permutedims(element.N[qp]))
+shape_values(::MatrixStyle, ::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp]')
 function shape_gradients(::MatrixStyle, ::ScalarField, element::Element{T, dim}, qp::Int) where {T, dim}
     @_propagate_inbounds_meta
     mapreduce(SVector{dim, T}, hcat, element.dNdx[qp])

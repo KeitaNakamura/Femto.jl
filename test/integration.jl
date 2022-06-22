@@ -74,7 +74,7 @@ end
         g = (qp,Nv) -> Nv'
         @test integrate(f, fieldtype, element) ≈ F
         @test integrate(f, TensorStyle(f, element), fieldtype, element) ≈ F
-        @test integrate(g, MatrixStyle(g, element), fieldtype, element) |> vec ≈ F
+        @test integrate(g, MatrixStyle(g, element), fieldtype, element) ≈ F
     end
     @testset "VectorField" begin
         fieldtype = VectorField()
@@ -145,7 +145,7 @@ end
         g = (qp,Nv,n) -> (p * Nv')
         @test integrate(f, fieldtype, element) ≈ F
         @test integrate(f, TensorStyle(f, element), fieldtype, element) ≈ F
-        @test integrate(g, MatrixStyle(g, element), fieldtype, element) |> vec ≈ F
+        @test integrate(g, MatrixStyle(g, element), fieldtype, element) ≈ F
     end
     @testset "VectorField" begin
         fieldtype = VectorField()
@@ -185,6 +185,6 @@ end
         g = (qp,Nv,n) -> p * Nv' * n
         @test integrate(f, fieldtype, element) ≈ F
         @test integrate(f, TensorStyle(f, element), fieldtype, element) ≈ F
-        @test integrate(g, MatrixStyle(g, element), fieldtype, element) |> vec ≈ F
+        @test integrate(g, MatrixStyle(g, element), fieldtype, element) ≈ F
     end
 end
