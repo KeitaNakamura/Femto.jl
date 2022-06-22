@@ -36,8 +36,6 @@ abstract type FieldType end
 struct ScalarField <: FieldType end
 struct VectorField <: FieldType end
 
-abstract type IntegrationStyle end
-
 include("dual.jl")
 
 include("shapes.jl")

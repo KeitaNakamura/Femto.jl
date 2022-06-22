@@ -110,58 +110,6 @@ dofindices(::ScalarField, ::Element, conn::Index) = conn
     end
 end
 
-######################################
-# function_values/function_gradients #
-######################################
-
-# ScalarField
-function_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
-function_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
-# VectorField
-@generated function function_values(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
-    exps = Expr[]
-    for k in 1:L, d in 1:dim
-        vals  = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
-        vec = :(Vec{dim, T}($(vals...)))
-        push!(exps, vec)
-    end
-    quote
-        @_inline_meta
-        @_propagate_inbounds_meta
-        N = element.N[qp]
-        SVector($(exps...))
-    end
-end
-@generated function function_gradients(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
-    exps = Expr[]
-    for k in 1:L, d in 1:dim
-        grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
-        mat = :(Mat{dim, dim, T}($(grads...)))
-        push!(exps, mat)
-    end
-    quote
-        @_inline_meta
-        @_propagate_inbounds_meta
-        dNdx = element.dNdx[qp]
-        SVector($(exps...))
-    end
-end
-
-#############
-# integrate #
-#############
-
-function integrate(f, style::IntegrationStyle, fieldtype::FieldType, element::Element)
-    sum(1:num_quadpoints(element)) do qp
-        @_inline_meta
-        @inbounds build_element(f, style, fieldtype, element, qp)
-    end
-end
-
-function integrate(f, fieldtype::FieldType, element::Element)
-    integrate(f, IntegrationStyle(f, fieldtype, element), fieldtype, element)
-end
-
 ###############
 # interpolate #
 ###############
