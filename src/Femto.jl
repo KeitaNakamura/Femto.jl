@@ -6,6 +6,7 @@ using StructArrays
 @reexport using Tensorial
 
 using Base: @pure, @_inline_meta, @_propagate_inbounds_meta
+using LinearAlgebra
 using SparseArrays
 
 export
@@ -42,5 +43,8 @@ include("shapes.jl")
 include("element.jl")
 include("sparse.jl")
 include("grid.jl")
+
+include("integration.jl")
+
 
 end # module

@@ -35,18 +35,6 @@ function update!(element::BodyElement, xᵢ::AbstractVector{<: Vec})
     element
 end
 
-function integrate(f, fieldtype::FieldType, element::BodyElement, build = infer_build_function(f, element))
-    sum(1:num_quadpoints(element)) do qp
-        @_inline_meta
-        @inbounds begin
-            dN = function_values(fieldtype, element, qp)
-            dNdx = function_gradients(fieldtype, element, qp)
-            detJdΩ = element.detJdΩ[qp]
-        end
-        build(f, qp, map(dual, dN, dNdx)) * detJdΩ
-    end
-end
-
 ###############
 # FaceElement #
 ###############
@@ -82,18 +70,6 @@ function update!(element::FaceElement, xᵢ::AbstractVector{<: Vec})
         element.detJdΩ[i] = w * norm(n)
     end
     element
-end
-
-function integrate(f, fieldtype::FieldType, element::FaceElement, build = infer_build_function(f, element))
-    sum(1:num_quadpoints(element)) do qp
-        @_inline_meta
-        @inbounds begin
-            N = function_values(fieldtype, element, qp)
-            detJdΩ = element.detJdΩ[qp]
-            normal = element.normal[qp]
-        end
-        build(f, qp, N, normal) * detJdΩ
-    end
 end
 
 ###########
@@ -133,78 +109,6 @@ dofindices(::ScalarField, ::Element, conn::Index) = conn
         @inbounds Index($(exps...))
     end
 end
-
-######################################
-# function_values/function_gradients #
-######################################
-
-# ScalarField
-function_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
-function_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
-# VectorField
-@generated function function_values(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
-    exps = Expr[]
-    for k in 1:L, d in 1:dim
-        vals  = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
-        vec = :(Vec{dim, T}($(vals...)))
-        push!(exps, vec)
-    end
-    quote
-        @_inline_meta
-        @_propagate_inbounds_meta
-        N = element.N[qp]
-        SVector($(exps...))
-    end
-end
-@generated function function_gradients(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
-    exps = Expr[]
-    for k in 1:L, d in 1:dim
-        grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
-        mat = :(Mat{dim, dim, T}($(grads...)))
-        push!(exps, mat)
-    end
-    quote
-        @_inline_meta
-        @_propagate_inbounds_meta
-        dNdx = element.dNdx[qp]
-        SVector($(exps...))
-    end
-end
-
-#############################################
-# build_element_vector/build_element_matrix #
-#############################################
-
-@generated function build_element_vector(f, qp, N::SVector{L}, args...) where {L}
-    exps = [:(f(qp, N[$i], args...)) for i in 1:L]
-    quote
-        @_inline_meta
-        @inbounds SVector{$L}($(exps...))
-    end
-end
-
-@generated function build_element_matrix(f, qp, N::SVector{L}) where {L}
-    exps = [:(f(qp, N[$j], N[$i])) for i in 1:L, j in 1:L]
-    quote
-        @_inline_meta
-        @inbounds SMatrix{$L, $L}($(exps...))
-    end
-end
-
-@pure function infer_build_function(f, ::Type{<: BodyElement})
-    nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return build_element_vector
-    nargs == 3 && return build_element_matrix
-    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
-end
-
-@pure function infer_build_function(f, ::Type{<: FaceElement})
-    nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return build_element_vector
-    error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
-end
-
-infer_build_function(f, element::Element) = infer_build_function(f, typeof(element))
 
 ###############
 # interpolate #

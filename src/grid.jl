@@ -53,13 +53,14 @@ function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, di
     n = num_dofs(fieldtype, grid)
     @assert size(A) == (n,n)
     element = Element{T, dim}(get_shape(grid))
+    style = TensorStyle(f, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
         @inline function f′(qp, args...)
             @_propagate_inbounds_meta
             f(CartesianIndex(qp, eltindex), args...)
         end
-        Ke = integrate(f′, fieldtype, element, infer_build_function(f, element))
+        Ke = integrate(f′, style, fieldtype, element)
         ginds = dofindices(fieldtype, element, conn)
         add!(A, ginds, ginds, Ke)
     end
