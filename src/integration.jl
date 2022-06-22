@@ -1,7 +1,7 @@
 abstract type IntegrationStyle end
 
 function integrate(f, fieldtype::FieldType, element::Element)
-    integrate(f, TensorStyle(f, fieldtype, element), fieldtype, element)
+    integrate(f, TensorStyle(f, element), fieldtype, element)
 end
 
 function integrate(f, style::IntegrationStyle, fieldtype::FieldType, element::Element)
@@ -18,10 +18,7 @@ end
 struct TensorStyle{vector_or_matrix} <: IntegrationStyle end
 
 ## constructors
-function TensorStyle(f, fieldtype::FieldType, element::Element)
-    TensorStyle(f, typeof(element))
-end
-
+TensorStyle(f, element::Element) = TensorStyle(f, typeof(element))
 @pure function TensorStyle(f, ::Type{<: BodyElement})
     nargs = last(methods(f)).nargs - 1
     nargs == 2 && return TensorStyle{:vector}()
@@ -112,6 +109,8 @@ end
 
 struct MatrixStyle{vector_or_matrix} <: IntegrationStyle end
 
+# constructors
+MatrixStyle(f, element::Element) = MatrixStyle(f, typeof(element))
 @pure function MatrixStyle(f, ::Type{<: BodyElement})
     nargs = last(methods(f)).nargs - 1
     nargs == 2 && return MatrixStyle{:vector}()

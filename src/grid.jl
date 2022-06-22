@@ -53,7 +53,7 @@ function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, di
     n = num_dofs(fieldtype, grid)
     @assert size(A) == (n,n)
     element = Element{T, dim}(get_shape(grid))
-    style = TensorStyle(f, fieldtype, element)
+    style = TensorStyle(f, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
         @inline function f′(qp, args...)
