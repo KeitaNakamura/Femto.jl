@@ -43,7 +43,7 @@ include("element.jl")
 include("sparse.jl")
 include("grid.jl")
 
-include("integrationstyles.jl")
+include("integration.jl")
 
 
 end # module
