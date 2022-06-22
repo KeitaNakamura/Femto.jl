@@ -6,19 +6,12 @@ quadpoints(s::Shape) = quadpoints(Float64, s)
 quadweights(s::Shape) = quadweights(Float64, s)
 
 # values_gradients
-@inline function values_gradients(shape::Shape, X::Vec{dim}) where {dim}
+@inline function values_gradients(shape::Shape, X::Vec)
     grads, vals = gradient(X -> Tensor(values(shape, X)), X, :all)
-    SVector(Tuple(vals)), _reinterpret_to_vec(grads')
+    SVector(Tuple(vals)), _reinterpret_to_vec(grads)
 end
-@generated function _reinterpret_to_vec(A::Mat{dim, N, T}) where {dim, N, T}
-    exps = map(1:N) do j
-        vals = [:(A[$i,$j]) for i in 1:dim]
-        :(Vec($(vals...)))
-    end
-    quote
-        @_inline_meta
-        @inbounds SVector($(exps...))
-    end
+@inline function _reinterpret_to_vec(A::Mat{N, dim}) where {N, dim}
+    SVector(ntuple(i->A[i,:], Val(N)))
 end
 
 #########
