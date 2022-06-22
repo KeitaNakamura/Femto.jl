@@ -1,3 +1,5 @@
+using Femto: TensorStyle, MatrixStyle
+
 @testset "Element" begin
     @testset "interpolate" begin
         for T in (Float64, Float32)
@@ -54,6 +56,8 @@
                 N' * N * dΩ
             end
             @test integrate((qp,u,v) -> v*u, fieldtype, element) ≈ M
+            @test integrate((qp,u,v) -> v*u, TensorStyle{:matrix}(), fieldtype, element) ≈ M
+            @test integrate((qp,Nu,Nv) -> Nv'*Nu, MatrixStyle{:matrix}(), fieldtype, element) ≈ M
             # stiffness matrix
             K = sum(1:Femto.num_quadpoints(element)) do qp
                 B = reduce(hcat, element.dNdx[qp])
@@ -61,6 +65,8 @@
                 B' * B * dΩ
             end
             @test integrate((qp,u,v) -> ∇(v)⋅∇(u), fieldtype, element) ≈ K
+            @test integrate((qp,u,v) -> ∇(v)⋅∇(u), TensorStyle{:matrix}(), fieldtype, element) ≈ K
+            @test integrate((qp,Nu,Nv) -> ∇(Nv)'*∇(Nu), MatrixStyle{:matrix}(), fieldtype, element) ≈ K
             # element vector
             F = sum(1:Femto.num_quadpoints(element)) do qp
                 N = element.N[qp]
@@ -68,6 +74,8 @@
                 N * dΩ
             end
             @test integrate((qp,v) -> v, fieldtype, element) ≈ F
+            @test integrate((qp,v) -> v, TensorStyle{:vector}(), fieldtype, element) ≈ F
+            @test integrate((qp,Nv) -> Nv', MatrixStyle{:vector}(), fieldtype, element) |> vec ≈ F
         end
         @testset "VectorField" begin
             fieldtype = VectorField()
@@ -82,6 +90,8 @@
                 N' * N * dΩ
             end
             @test integrate((qp,u,v) -> v⋅u, fieldtype, element) ≈ M
+            @test integrate((qp,u,v) -> v⋅u, TensorStyle{:matrix}(), fieldtype, element) ≈ M
+            @test integrate((qp,Nu,Nv) -> Nv'*Nu, MatrixStyle{:matrix}(), fieldtype, element) ≈ M
             # stiffness matrix
             ke = rand(SymmetricFourthOrderTensor{2})
             K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -93,6 +103,8 @@
                 B' * tovoigt(ke) *  B * dΩ
             end
             @test integrate((qp,u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), fieldtype, element) ≈ K
+            @test integrate((qp,u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), TensorStyle{:matrix}(), fieldtype, element) ≈ K
+            @test integrate((qp,Nu,Nv) -> symmetric(∇(Nv))' * tovoigt(ke) * symmetric(∇(Nu)), MatrixStyle{:matrix}(), fieldtype, element) ≈ K
             # element vector
             σ = rand(SymmetricSecondOrderTensor{2})
             F = sum(1:Femto.num_quadpoints(element)) do qp
@@ -104,6 +116,8 @@
                 B' * tovoigt(σ) * dΩ
             end
             @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), fieldtype, element) ≈ F
+            @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), TensorStyle{:vector}(), fieldtype, element) ≈ F
+            @test integrate((qp,Nv) -> symmetric(∇(Nv))' * tovoigt(σ), MatrixStyle{:vector}(), fieldtype, element) ≈ F
         end
     end
     @testset "integrate FaceElement" begin
@@ -122,6 +136,8 @@
                 p * N * dΩ
             end
             @test integrate((qp,v,n) -> (p * v), fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> (p * v), TensorStyle{:vector}(), fieldtype, element) ≈ F
+            @test integrate((qp,Nv,n) -> (p * Nv'), MatrixStyle{:vector}(), fieldtype, element) |> vec ≈ F
         end
         @testset "VectorField" begin
             fieldtype = VectorField()
@@ -139,6 +155,8 @@
                 p * N' * normal * dΩ
             end
             @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> p*n ⋅ v, TensorStyle{:vector}(), fieldtype, element) ≈ F
+            @test integrate((qp,Nv,n) -> p * Nv' * n, MatrixStyle{:vector}(), fieldtype, element) ≈ F
             # dim 3
             element = FaceElement(Quad4())
             p = rand()
@@ -154,6 +172,8 @@
                 p * N' * normal * dΩ
             end
             @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,v,n) -> p*n ⋅ v, TensorStyle{:vector}(), fieldtype, element) ≈ F
+            @test integrate((qp,Nv,n) -> p * Nv' * n, MatrixStyle{:vector}(), fieldtype, element) |> vec ≈ F
         end
     end
 end
