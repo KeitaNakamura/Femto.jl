@@ -25,6 +25,7 @@ export
     interpolate,
     # Shape
     Line2,
+    Line3,
     Quad4,
     Hex8,
     Tri6,

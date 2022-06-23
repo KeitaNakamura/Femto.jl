@@ -1,5 +1,5 @@
 @testset "Shapes" begin
-    @testset "$shape" for shape in (Line2(), Quad4(), Hex8(), Tri6())
+    @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
         for T in (Float64, Float32)
             dim = @inferred Femto.get_dimension(shape)
             n_nodes = @inferred Femto.num_nodes(shape)

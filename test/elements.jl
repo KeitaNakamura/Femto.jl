@@ -1,8 +1,8 @@
 @testset "Element" begin
     @testset "interpolate" begin
-        for T in (Float64, Float32)
-            TOL = sqrt(eps(T))
-            for shape in (Line2(), Quad4(), Hex8(), Tri6())
+        @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
+            for T in (Float64, Float32)
+                TOL = sqrt(eps(T))
                 dim = Femto.get_dimension(shape)
                 element = Element{T}(shape)
                 X = @inferred interpolate(VectorField(), element, reinterpret(T, Femto.get_local_node_coordinates(T, shape)))
@@ -14,7 +14,7 @@
                     # qp
                     x = @inferred interpolate(element, Femto.get_local_node_coordinates(T, shape), qp)
                     dxdx = ∇(x)
-                    @test x ≈ Femto.quadpoints(shape)[qp] atol=TOL
+                    @test x ≈ Femto.quadpoints(T, shape)[qp] atol=TOL
                     @test x ≈ X[qp] atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL
                     @test dxdx ≈ ∇(X[qp]) atol=TOL

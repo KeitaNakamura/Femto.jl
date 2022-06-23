@@ -1,5 +1,6 @@
 using Femto
 using Test
+using InteractiveUtils # for subtypes
 
 using StaticArrays
 

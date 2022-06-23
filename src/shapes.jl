@@ -48,6 +48,43 @@ function quadweights(::Type{T}, ::Line2) where {T}
 end
 
 #########
+# Line3 #
+#########
+
+struct Line3 <: Shape{1} end
+
+@pure num_nodes(::Line3) = 3
+@pure num_quadpoints(::Line3) = 2
+
+function get_local_node_coordinates(::Type{T}, ::Line3) where {T}
+    SVector{3, Vec{1, T}}(
+        (-1.0,),
+        ( 1.0,),
+        ( 0.0,),
+    )
+end
+
+function Base.values(::Line3, X::Vec{1, T}) where {T}
+    ξ = X[1]
+    SVector{3, T}(
+        -0.5 * ξ*(1-ξ),
+         0.5 * ξ*(1+ξ),
+        1 - ξ^2,
+    )
+end
+
+function quadpoints(::Type{T}, ::Line3) where {T}
+    ξ = √3 / 3
+    NTuple{2, Vec{1, T}}((
+        (-ξ,),
+        ( ξ,),
+    ))
+end
+function quadweights(::Type{T}, ::Line3) where {T}
+    NTuple{2, T}((1, 1))
+end
+
+#########
 # Quad4 #
 #########
 
