@@ -38,10 +38,8 @@ function add!(A::SparseMatrixIJV, I::AbstractVector{Int}, J::AbstractVector{Int}
     end
     A
 end
-
-function add!(A::AbstractMatrix, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
-    @. A[I, J] += K
-    A
+function add!(A::SparseMatrixIJV, I::AbstractVector{Int}, K::AbstractMatrix)
+    add!(A, I, I, K)
 end
 
 fillzero!(A::SparseMatrixIJV) = (map(empty!, findnz(A)); A)

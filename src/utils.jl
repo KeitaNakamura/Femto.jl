@@ -21,3 +21,15 @@ function fillzero!(x::AbstractArray)
     end
     x
 end
+
+# add!
+function add!(A::AbstractMatrix, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
+    @. A[I, J] += K
+    A
+end
+add!(A::AbstractMatrix, I::AbstractVector{Int}, K::AbstractMatrix) = add!(A, I, K)
+
+function add!(A::AbstractVector, I::AbstractVector{Int}, F::AbstractVector)
+    @. A[I] += F
+    A
+end
