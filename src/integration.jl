@@ -1,4 +1,4 @@
-abstract type IntegrationStyle end
+abstract type IntegrationStyle{VectorOrMatrix} end
 
 function integrate(f, fieldtype::FieldType, element::Element)
     integrate(f, TensorStyle(f, element), fieldtype, element)
@@ -15,19 +15,21 @@ end
 # TensorStyle #
 ###############
 
-struct TensorStyle{vector_or_matrix} <: IntegrationStyle end
+struct TensorStyle{VectorOrMatrix} <: IntegrationStyle{VectorOrMatrix}
+    TensorStyle{VectorOrMatrix}() where {VectorOrMatrix} = new{VectorOrMatrix::Union{Type{Vector}, Type{Matrix}}}()
+end
 
 ## constructors
 TensorStyle(f, element::Element) = TensorStyle(f, typeof(element))
 @pure function TensorStyle(f, ::Type{<: BodyElement})
     nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return TensorStyle{:vector}()
-    nargs == 3 && return TensorStyle{:matrix}()
+    nargs == 2 && return TensorStyle{Vector}()
+    nargs == 3 && return TensorStyle{Matrix}()
     error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
 end
 @pure function TensorStyle(f, ::Type{<: FaceElement})
     nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return TensorStyle{:vector}()
+    nargs == 3 && return TensorStyle{Vector}()
     error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
 end
 
@@ -67,18 +69,18 @@ end
 
 ## build element matrix and vector
 # BodyElement
-@inline function build_element(f, style::TensorStyle{vector_or_matrix}, fieldtype::FieldType, element::Element, qp::Int) where {vector_or_matrix}
+@inline function build_element(f, style::TensorStyle{VectorOrMatrix}, fieldtype::FieldType, element::Element, qp::Int) where {VectorOrMatrix}
     @_propagate_inbounds_meta
     N = shape_values(style, fieldtype, element, qp)
     dNdx = shape_gradients(style, fieldtype, element, qp)
     detJdΩ = element.detJdΩ[qp]
     u = v = map(dual, N, dNdx)
-    vector_or_matrix == :vector && return build_element_vector(f, qp, v)    * detJdΩ
-    vector_or_matrix == :matrix && return build_element_matrix(f, qp, v, u) * detJdΩ
+    VectorOrMatrix == Vector && return build_element_vector(f, qp, v)    * detJdΩ
+    VectorOrMatrix == Matrix && return build_element_matrix(f, qp, v, u) * detJdΩ
     error("unreachable")
 end
 # FaceElement
-@inline function build_element(f, style::TensorStyle{:vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
+@inline function build_element(f, style::TensorStyle{Vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
     @_propagate_inbounds_meta
     v = shape_values(style, fieldtype, element, qp)
     detJdΩ = element.detJdΩ[qp]
@@ -107,19 +109,21 @@ end
 # MatrixStyle #
 ###############
 
-struct MatrixStyle{vector_or_matrix} <: IntegrationStyle end
+struct MatrixStyle{VectorOrMatrix} <: IntegrationStyle{VectorOrMatrix}
+    MatrixStyle{VectorOrMatrix}() where {VectorOrMatrix} = new{VectorOrMatrix::Union{Type{Vector}, Type{Matrix}}}()
+end
 
 # constructors
 MatrixStyle(f, element::Element) = MatrixStyle(f, typeof(element))
 @pure function MatrixStyle(f, ::Type{<: BodyElement})
     nargs = last(methods(f)).nargs - 1
-    nargs == 2 && return MatrixStyle{:vector}()
-    nargs == 3 && return MatrixStyle{:matrix}()
+    nargs == 2 && return MatrixStyle{Vector}()
+    nargs == 3 && return MatrixStyle{Matrix}()
     error("wrong number of arguments in `integrate`, use `(index, Nu, Nv)` for matrix or `(index, Nv)` for vector")
 end
 @pure function MatrixStyle(f, ::Type{<: FaceElement})
     nargs = last(methods(f)).nargs - 1
-    nargs == 3 && return MatrixStyle{:vector}()
+    nargs == 3 && return MatrixStyle{Vector}()
     error("wrong number of arguments in `integrate`, use `(index, Nv, normal)`")
 end
 
@@ -185,19 +189,19 @@ function shape_gradients(::MatrixStyle, ::VectorField, element::Element{T, dim},
     ShapeGradientMatrix{m, n, T, m*n}(Tuple(dNdx))
 end
 
-@inline function build_element(f, style::MatrixStyle{vector_or_matrix}, fieldtype::FieldType, element::BodyElement, qp::Int) where {vector_or_matrix}
+@inline function build_element(f, style::MatrixStyle{VectorOrMatrix}, fieldtype::FieldType, element::BodyElement, qp::Int) where {VectorOrMatrix}
     @_propagate_inbounds_meta
     Nu = Nv = ShapeValueMatrix(
         shape_values(style, fieldtype, element, qp),
         shape_gradients(style, fieldtype, element, qp),
     )
     detJdΩ = element.detJdΩ[qp]
-    vector_or_matrix == :vector && return f(qp, Nv)     * detJdΩ
-    vector_or_matrix == :matrix && return f(qp, Nu, Nv) * detJdΩ
+    VectorOrMatrix == Vector && return f(qp, Nv)     * detJdΩ
+    VectorOrMatrix == Matrix && return f(qp, Nu, Nv) * detJdΩ
     error("unreachable")
 end
 
-@inline function build_element(f, style::MatrixStyle{:vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
+@inline function build_element(f, style::MatrixStyle{Vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
     @_propagate_inbounds_meta
     Nv = shape_values(style, fieldtype, element, qp)
     detJdΩ = element.detJdΩ[qp]

@@ -5,7 +5,7 @@ using Femto: TensorStyle, MatrixStyle
     element = Element(Line2())
     for qp in 1:Femto.num_quadpoints(element)
         dNdx1, dNdx2 = element.dNdx[qp]
-        dNdx = Femto.shape_gradients(MatrixStyle{:matrix}(), VectorField(), element, qp)
+        dNdx = Femto.shape_gradients(MatrixStyle{Matrix}(), VectorField(), element, qp)
         @test dNdx ≈ [only(dNdx1) only(dNdx2)]
         @test symmetric(dNdx) ≈ dNdx
     end
@@ -13,7 +13,7 @@ using Femto: TensorStyle, MatrixStyle
     element = Element(Quad4())
     for qp in 1:Femto.num_quadpoints(element)
         (dNdx1, dNdy1), (dNdx2, dNdy2), (dNdx3, dNdy3), (dNdx4, dNdy4) = element.dNdx[qp]
-        dNdx = Femto.shape_gradients(MatrixStyle{:matrix}(), VectorField(), element, qp)
+        dNdx = Femto.shape_gradients(MatrixStyle{Matrix}(), VectorField(), element, qp)
         @test dNdx ≈ [dNdx1 0     dNdx2 0       dNdx3 0     dNdx4 0
                       0     dNdy1 0     dNdy2 0       dNdy3 0     dNdy4]
         @test symmetric(dNdx) ≈ [dNdx1 0     dNdx2 0     dNdx3 0     dNdx4 0
@@ -24,7 +24,7 @@ using Femto: TensorStyle, MatrixStyle
     element = Element(Hex8())
     for qp in 1:Femto.num_quadpoints(element)
         (dNdx1, dNdy1, dNdz1), (dNdx2, dNdy2, dNdz2), (dNdx3, dNdy3, dNdz3), (dNdx4, dNdy4, dNdz4), (dNdx5, dNdy5, dNdz5), (dNdx6, dNdy6, dNdz6), (dNdx7, dNdy7, dNdz7), (dNdx8, dNdy8, dNdz8) = element.dNdx[qp]
-        dNdx = Femto.shape_gradients(MatrixStyle{:matrix}(), VectorField(), element, qp)
+        dNdx = Femto.shape_gradients(MatrixStyle{Matrix}(), VectorField(), element, qp)
         @test dNdx ≈ [dNdx1 0     0     dNdx2 0     0     dNdx3 0     0     dNdx4 0     0     dNdx5 0     0     dNdx6 0     0     dNdx7 0     0     dNdx8 0     0
                       0     dNdy1 0     0     dNdy2 0     0     dNdy3 0     0     dNdy4 0     0     dNdy5 0     0     dNdy6 0     0     dNdy7 0     0     dNdy8 0
                       0     0     dNdz1 0     0     dNdz2 0     0     dNdz3 0     0     dNdz4 0     0     dNdz5 0     0     dNdz6 0     0     dNdz7 0     0     dNdz8]
