@@ -52,7 +52,7 @@ end
     grid = generate_grid(0:2, 0:3)
     shape = Femto.get_shape(grid)
     element = Element(shape)
-    eltstate = generate_elementstate(ElementState, grid)
+    eltstate = @inferred generate_elementstate(ElementState, grid)
     @test size(eltstate) == (Femto.num_quadpoints(shape), Femto.num_elements(grid))
     for I in CartesianIndices(eltstate)
         qp, eltindex = Tuple(I)

@@ -5,17 +5,22 @@
             for shape in (Line2(), Quad4(), Hex8(), Tri6())
                 dim = Femto.get_dimension(shape)
                 element = Element{T}(shape)
+                X = @inferred interpolate(VectorField(), element, reinterpret(T, Femto.get_local_node_coordinates(T, shape)))
                 for qp in Femto.num_quadpoints(element)
-                    # shape values and gradients
+                    ## shape values and gradients
                     @test sum(element.N[qp]) ≈ 1
                     @test norm(sum(element.dNdx[qp])) < TOL
-                    # interpolate
-                    x = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), qp)
+                    ## interpolate
+                    # qp
+                    x = @inferred interpolate(element, Femto.get_local_node_coordinates(T, shape), qp)
                     dxdx = ∇(x)
                     @test x ≈ Femto.quadpoints(shape)[qp] atol=TOL
+                    @test x ≈ X[qp] atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL
+                    @test dxdx ≈ ∇(X[qp]) atol=TOL
+                    # ξ
                     x′ = rand(Vec{dim, T})
-                    x = @inferred Femto.interpolate(element, Femto.get_local_node_coordinates(shape), x′)
+                    x = @inferred interpolate(element, Femto.get_local_node_coordinates(T, shape), x′)
                     dxdx = ∇(x)
                     @test x ≈ x′ atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL
