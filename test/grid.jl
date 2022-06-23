@@ -43,12 +43,12 @@
     end
 end
 
-struct ElementState
-    x::Vec{2, Float64}
-    σ::SymmetricSecondOrderTensor{3, Float64}
-    index::Int
-end
 @testset "Generating element state" begin
+    ElementState = @NamedTuple begin
+        x::Vec{2, Float64}
+        σ::SymmetricSecondOrderTensor{3, Float64}
+        index::Int
+    end
     grid = generate_grid(0:2, 0:3)
     shape = Femto.get_shape(grid)
     element = Element(shape)
