@@ -115,7 +115,7 @@ end
 ###############
 
 _otimes(x, y) = x * y
-_otimes(x::Vec, y::Vec) = x ⊗ y
+_otimes(x::Tensor, y::Tensor) = x ⊗ y
 
 function interpolate(element::Element, uᵢ::AbstractVector, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)

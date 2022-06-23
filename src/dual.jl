@@ -16,25 +16,25 @@ end
 
 ∇(x::RealVec) = x.vector
 
-##########
-# VecMat #
-##########
+#######################
+# ValueGradientTensor #
+#######################
 
-struct VecMat{dim, T, dim²} <: AbstractVec{dim, T}
-    vector::Vec{dim, T}
-    matrix::Mat{dim, dim, T, dim²}
+struct ValueGradientTensor{S, T, N, L, G} <: AbstractTensor{S, T, N}
+    val::Tensor{S, T, N, L}
+    grad::G
 end
-Base.Tuple(x::VecMat) = Tuple(x.vector)
-@inline function Base.getindex(x::VecMat, i::Int)
+Base.Tuple(x::ValueGradientTensor) = Tuple(x.val)
+@inline function Base.getindex(x::ValueGradientTensor, i::Int)
     @boundscheck checkbounds(x, i)
-    @inbounds x.vector[i]
+    @inbounds x.val[i]
 end
 
-∇(x::VecMat) = x.matrix
+∇(x::ValueGradientTensor) = x.grad
 
 ########
 # dual #
 ########
 
 dual(u::Real, dudx::Vec) = RealVec(u, dudx)
-dual(u::Vec, dudx::Mat) = VecMat(u, dudx)
+dual(u::Tensor, dudx::Tensor) = ValueGradientTensor(u, dudx)
