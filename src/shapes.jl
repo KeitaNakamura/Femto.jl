@@ -30,11 +30,11 @@ function get_local_node_coordinates(::Type{T}, ::Line2) where {T}
     )
 end
 
-function Base.values(::Line2, X::Vec{1})
+function Base.values(::Line2, X::Vec{1, T}) where {T}
     ξ = X[1]
-    SVector{2}(
-        (1 - ξ) / 2,
-        (1 + ξ) / 2,
+    SVector{2, T}(
+        0.5 * (1-ξ),
+        0.5 * (1+ξ),
     )
 end
 
@@ -65,13 +65,13 @@ function get_local_node_coordinates(::Type{T}, ::Quad4) where {T}
     )
 end
 
-function Base.values(::Quad4, X::Vec{2})
+function Base.values(::Quad4, X::Vec{2, T}) where {T}
     ξ, η = X
-    SVector{4}(
-        (1 - ξ) * (1 - η) / 4,
-        (1 + ξ) * (1 - η) / 4,
-        (1 + ξ) * (1 + η) / 4,
-        (1 - ξ) * (1 + η) / 4,
+    SVector{4, T}(
+        0.25 * (1-ξ) * (1-η),
+        0.25 * (1+ξ) * (1-η),
+        0.25 * (1+ξ) * (1+η),
+        0.25 * (1-ξ) * (1+η),
     )
 end
 
@@ -110,17 +110,17 @@ function get_local_node_coordinates(::Type{T}, ::Hex8) where {T}
     )
 end
 
-function Base.values(::Hex8, X::Vec{3})
+function Base.values(::Hex8, X::Vec{3, T}) where {T}
     ξ, η, ζ = X
-    SVector{8}(
-        (1 - ξ) * (1 - η) * (1 - ζ) / 8,
-        (1 + ξ) * (1 - η) * (1 - ζ) / 8,
-        (1 + ξ) * (1 + η) * (1 - ζ) / 8,
-        (1 - ξ) * (1 + η) * (1 - ζ) / 8,
-        (1 - ξ) * (1 - η) * (1 + ζ) / 8,
-        (1 + ξ) * (1 - η) * (1 + ζ) / 8,
-        (1 + ξ) * (1 + η) * (1 + ζ) / 8,
-        (1 - ξ) * (1 + η) * (1 + ζ) / 8,
+    SVector{8, T}(
+        0.125 * (1-ξ) * (1-η) * (1-ζ),
+        0.125 * (1+ξ) * (1-η) * (1-ζ),
+        0.125 * (1+ξ) * (1+η) * (1-ζ),
+        0.125 * (1-ξ) * (1+η) * (1-ζ),
+        0.125 * (1-ξ) * (1-η) * (1+ζ),
+        0.125 * (1+ξ) * (1-η) * (1+ζ),
+        0.125 * (1+ξ) * (1+η) * (1+ζ),
+        0.125 * (1-ξ) * (1+η) * (1+ζ),
     )
 end
 
@@ -161,13 +161,13 @@ function get_local_node_coordinates(::Type{T}, ::Tri6) where {T}
     )
 end
 
-function Base.values(::Tri6, X::Vec{2})
+function Base.values(::Tri6, X::Vec{2, T}) where {T}
     ξ, η = X
     ζ = 1 - ξ - η
-    SVector{6}(
-        ξ * (2ξ - 1),
-        η * (2η - 1),
-        ζ * (2ζ - 1),
+    SVector{6, T}(
+        ξ * (2ξ-1),
+        η * (2η-1),
+        ζ * (2ζ-1),
         4ξ * η,
         4η * ζ,
         4ζ * ξ,
