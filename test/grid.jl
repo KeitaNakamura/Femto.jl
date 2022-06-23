@@ -54,12 +54,14 @@ end
     element = Element(shape)
     eltstate = @inferred generate_elementstate(ElementState, grid)
     @test size(eltstate) == (Femto.num_quadpoints(shape), Femto.num_elements(grid))
+    X = @inferred interpolate(grid, Femto.get_nodes(grid))
     for I in CartesianIndices(eltstate)
         qp, eltindex = Tuple(I)
         conn = Femto.get_connectivities(grid)[eltindex]
         q = eltstate[I]
         @test q isa ElementState
         @test q.x ≈ interpolate(element, Femto.get_nodes(grid)[conn], qp)
+        @test q.x ≈ X[I]
         @test q.σ == zero(q.σ)
         @test q.index == zero(q.index)
     end
