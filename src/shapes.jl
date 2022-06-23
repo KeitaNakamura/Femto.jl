@@ -125,6 +125,72 @@ function quadweights(::Type{T}, ::Quad4) where {T}
     NTuple{4, T}((1, 1, 1, 1))
 end
 
+#########
+# Quad9 #
+#########
+
+struct Quad9 <: Shape{2} end
+
+@pure num_nodes(::Quad9) = 9
+@pure num_quadpoints(::Quad9) = 9
+
+function get_local_node_coordinates(::Type{T}, ::Quad9) where {T}
+    SVector{9, Vec{2, T}}(
+        (-1.0, -1.0),
+        ( 1.0, -1.0),
+        ( 1.0,  1.0),
+        (-1.0,  1.0),
+        ( 0.0, -1.0),
+        ( 1.0,  0.0),
+        ( 0.0,  1.0),
+        (-1.0,  0.0),
+        ( 0.0,  0.0),
+    )
+end
+
+function Base.values(::Quad9, X::Vec{2, T}) where {T}
+    ξ, η = X
+    SVector{9, T}(
+         0.25 * ξ * η * (1-ξ) * (1-η),
+        -0.25 * ξ * η * (1+ξ) * (1-η),
+         0.25 * ξ * η * (1+ξ) * (1+η),
+        -0.25 * ξ * η * (1-ξ) * (1+η),
+        -0.5 * η * (1-ξ^2) * (1-η),
+         0.5 * ξ * (1+ξ) * (1-η^2),
+         0.5 * η * (1-ξ^2) * (1+η),
+        -0.5 * ξ * (1-ξ) * (1-η^2),
+         (1-ξ^2) * (1-η^2),
+    )
+end
+
+function quadpoints(::Type{T}, ::Quad9) where {T}
+    ξ = η = √(3/5)
+    NTuple{9, Vec{2, T}}((
+        (-ξ, -η),
+        ( 0, -η),
+        ( ξ, -η),
+        (-ξ,  0),
+        ( 0,  0),
+        ( ξ,  0),
+        (-ξ,  η),
+        ( 0,  η),
+        ( ξ,  η),
+    ))
+end
+function quadweights(::Type{T}, ::Quad9) where {T}
+    NTuple{9, T}((
+        5/9 * 5/9,
+        8/9 * 5/9,
+        5/9 * 5/9,
+        5/9 * 8/9,
+        8/9 * 8/9,
+        5/9 * 8/9,
+        5/9 * 5/9,
+        8/9 * 5/9,
+        5/9 * 5/9,
+    ))
+end
+
 ########
 # Hex8 #
 ########
