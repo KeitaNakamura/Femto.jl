@@ -133,3 +133,14 @@ function interpolate(element::Element, uᵢ::AbstractVector, ξ::Vec)
     dudx = mapreduce(_otimes, +, uᵢ, dNdx)
     dual(u, dudx)
 end
+
+# interpolate `uᵢ` at all quadrature points
+function interpolate(element::Element, uᵢ::AbstractVector)
+    @assert num_nodes(element) == length(uᵢ)
+    mappedarray(1:num_quadpoints(element)) do qp
+        @inbounds interpolate(element, uᵢ, qp)
+    end
+end
+
+interpolate(::ScalarField, element::Element, uᵢ::AbstractVector{<: Real}, args...) = interpolate(element, uᵢ, args...)
+interpolate(::VectorField, element::Element{T, dim}, uᵢ::AbstractVector{<: Real}, args...) where {T, dim} = interpolate(element, reinterpret(Vec{dim, T}, uᵢ), args...)

@@ -46,7 +46,6 @@ end
 
 fillzero!(A::SparseMatrixIJV) = (map(empty!, findnz(A)); A)
 fillzero!(A::SparseMatrixCSC) = dropzeros!(fill!(A, 0))
-fillzero!(A::AbstractMatrix) = fill!(A, 0)
 SparseArrays.findnz(A::SparseMatrixIJV) = A.I, A.J, A.V
 
 Base.:\(A::SparseMatrixIJV, b::AbstractVector) = sparse(A) \ b

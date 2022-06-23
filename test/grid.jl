@@ -42,3 +42,25 @@
         @test Femto.sparse(@inferred integrate((index,u,v)->v*u, fieldtype, grid)) ≈ integrate((qp,u,v)->v*u, fieldtype, element)[inds, inds]
     end
 end
+
+struct ElementState
+    x::Vec{2, Float64}
+    σ::SymmetricSecondOrderTensor{3, Float64}
+    index::Int
+end
+@testset "Generating element state" begin
+    grid = generate_grid(0:2, 0:3)
+    shape = Femto.get_shape(grid)
+    element = Element(shape)
+    eltstate = generate_elementstate(ElementState, grid)
+    @test size(eltstate) == (Femto.num_quadpoints(shape), Femto.num_elements(grid))
+    for I in CartesianIndices(eltstate)
+        qp, eltindex = Tuple(I)
+        conn = Femto.get_connectivities(grid)[eltindex]
+        q = eltstate[I]
+        @test q isa ElementState
+        @test q.x ≈ interpolate(element, Femto.get_nodes(grid)[conn], qp)
+        @test q.σ == zero(q.σ)
+        @test q.index == zero(q.index)
+    end
+end

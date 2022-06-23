@@ -74,15 +74,34 @@ function integrate(f, fieldtype::FieldType, grid::Grid)
     A
 end
 
-#################
-# Element state #
-#################
+#########################
+# generate_elementstate #
+#########################
 
 function generate_elementstate(::Type{ElementState}, grid::Grid) where {ElementState}
-    StructArray{ElementState}(undef, num_quadpoints(get_shape(grid)), num_elements(grid))
+    elementstate = StructArray{ElementState}(undef, num_quadpoints(get_shape(grid)), num_elements(grid))
+    fillzero!(elementstate)
+    if :x in propertynames(elementstate)
+        elementstate.x .= interpolate(grid, get_nodes(grid))
+    end
+    elementstate
 end
 
-function update_elementstate!(f, elementstates, grid::Grid)
-    for eltindex in 1:num_elements(grid)
+###############
+# interpolate #
+###############
+
+# returned mappedarray's size is the same as elementstate matrix
+function interpolate(grid::Grid{T}, nodalvalues::AbstractVector) where {T}
+    @assert num_nodes(grid) == length(nodalvalues)
+    element = Element{T}(get_shape(grid))
+    dims = (num_quadpoints(get_shape(grid)), num_elements(grid))
+    mappedarray(CartesianIndices(dims)) do I
+        qp, eltindex = Tuple(I)
+        conn = get_connectivities(grid)[eltindex]
+        interpolate(element, nodalvalues[conn], qp)
     end
 end
+
+interpolate(::ScalarField, grid::Grid, nodalvalues::AbstractVector{<: Real}) = interpolate(grid, nodalvalues)
+interpolate(::VectorField, grid::Grid{T, dim}, nodalvalues::AbstractVector{<: Real}) where {T, dim} = interpolate(grid, reinterpret(Vec{dim, T}, nodalvalues))
