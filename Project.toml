@@ -13,6 +13,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tensorial = "98f94333-fa9f-48a9-ad80-1c66397b2b38"
 
 [compat]
+MappedArrays = "0.4"
 Reexport = "1"
 StaticArrays = "1"
 StructArrays = "0.6"
