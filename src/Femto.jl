@@ -27,7 +27,9 @@ export
     Line2,
     Line3,
     Quad4,
+    Quad9,
     Hex8,
+    Hex27,
     Tri6,
     # Grid
     Grid,
