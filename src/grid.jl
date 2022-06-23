@@ -9,6 +9,7 @@ get_nodes(grid::Grid) = grid.nodes
 get_shape(grid::Grid) = grid.shape
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
+create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
 
 num_nodes(grid::Grid) = length(get_nodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
@@ -52,7 +53,7 @@ end
 function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, dim}) where {T, dim}
     n = num_dofs(fieldtype, grid)
     @assert size(A) == (n,n)
-    element = Element{T, dim}(get_shape(grid))
+    element = create_element(grid)
     style = TensorStyle(f, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
