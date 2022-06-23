@@ -4,6 +4,6 @@ using Test
 using StaticArrays
 
 include("shapes.jl")
-include("element.jl")
+include("elements.jl")
 include("grid.jl")
 include("integration.jl")

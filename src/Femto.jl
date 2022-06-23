@@ -43,7 +43,7 @@ struct VectorField <: FieldType end
 include("dual.jl")
 
 include("shapes.jl")
-include("element.jl")
+include("elements.jl")
 include("sparse.jl")
 include("grid.jl")
 include("utils.jl")
