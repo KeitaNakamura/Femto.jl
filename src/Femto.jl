@@ -33,6 +33,8 @@ export
     Tri6,
     # Grid
     Grid,
+    create_globalvector,
+    create_globalmatrix,
     integrate!,
     generate_grid,
     generate_elementstate
