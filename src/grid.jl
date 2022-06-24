@@ -19,6 +19,16 @@ num_dofs(::VectorField, grid::Grid) = num_nodes(grid) * get_dimension(grid)
 num_elementdofs(::ScalarField, grid::Grid) = num_nodes(get_shape(grid))
 num_elementdofs(::VectorField, grid::Grid) = num_nodes(get_shape(grid)) * get_dimension(grid)
 
+dofindices(ftype::FieldType, grid::Grid, I) = dofindices(ftype, Val(get_dimension(grid)), I)
+
+###############
+# eachelement #
+###############
+
+function eachelement(fieldtype::FieldType, grid::Grid)
+    mappedarray(conn -> dofindices(fieldtype, grid, conn), get_connectivities(grid))
+end
+
 #################
 # generate_grid #
 #################
@@ -58,7 +68,7 @@ const MaybeTuple{T} = Union{T, Tuple{Vararg{T}}}
 check_size(A::AbstractVector, n::Int) = @assert length(A) == n
 check_size(A::AbstractMatrix, n::Int) = @assert size(A) == (n, n)
 
-@pure function integrate_function(f, eltindex)
+@pure function convert_integrate_function(f, eltindex)
     @inline function f′(qp, args...)
         @_propagate_inbounds_meta
         f(CartesianIndex(qp, eltindex), args...)
@@ -80,41 +90,51 @@ function create_globalvector(::Type{T}, fieldtype::FieldType, grid::Grid) where 
 end
 create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, fieldtype, grid)
 # from IntegrationStyle
-create_globalarray(::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid) = create_globalmatrix(fieldtype, grid)
-create_globalarray(::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid) = create_globalvector(fieldtype, grid)
+create_globalarray(::Type{T}, ::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid) where {T} = create_globalmatrix(T, fieldtype, grid)
+create_globalarray(::Type{T}, ::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid) where {T} = create_globalvector(T, fieldtype, grid)
 
-## integrate!
-# with IntegrationStyle
-function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
+## assemble global matrix from element matrices
+function assemble!(A::MaybeTuple{AbstractArray}, Kes, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
     n = num_dofs(fieldtype, grid)
     map_tuple(check_size, A, n)
     zeroinit && map_tuple(fillzero!, A)
-    element = create_element(grid)
-    for (eltindex, conn) in enumerate(get_connectivities(grid))
-        update!(element, get_nodes(grid)[conn])
-        f′ = map_tuple(integrate_function, f, eltindex)
-        Ke = map_tuple(integrate, f′, style, fieldtype, element)
-        eltdofs = dofindices(fieldtype, element, conn)
+    for (Ke, eltdofs) in zip(Kes, eachelement(fieldtype, grid))
         map_tuple(add!, A, eltdofs, Ke)
     end
     A
 end
-# without IntegrationStyle
-function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
-    style = map_tuple(TensorStyle, f, get_elementtype(grid))
-    integrate!(f, A, style, fieldtype, grid; zeroinit)
+
+## integrate!
+function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
+    Kes = integrate_element(f, style, fieldtype, grid)
+    assemble!(A, Kes, fieldtype, grid; zeroinit)
 end
+integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true) =
+    integrate!(f, A, map_tuple(TensorStyle, f, get_elementtype(grid)), fieldtype, grid; zeroinit)
 
 ## integrate
-# with IntegrationStyle
 function integrate(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
-    A = map_tuple(create_globalarray, style, fieldtype, grid)
-    integrate!(f, A, style, fieldtype, grid)
+    Kes = integrate_element(f, style, fieldtype, grid)
+    A = map_tuple(create_globalarray, eltype(eltype(Kes)), style, fieldtype, grid)
+    assemble!(A, Kes, fieldtype, grid)
 end
-# without IntegrationStyle
-function integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
+integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
+    integrate(f, map_tuple(TensorStyle, f, get_elementtype(grid)), fieldtype, grid)
+
+## integrate_element
+function integrate_element(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
+    n = num_dofs(fieldtype, grid)
+    element = create_element(grid)
+    mappedarray(1:num_elements(grid)) do eltindex
+        conn = get_connectivities(grid)[eltindex]
+        update!(element, get_nodes(grid)[conn])
+        f′ = map_tuple(convert_integrate_function, f, eltindex)
+        Ke = map_tuple(integrate, f′, style, fieldtype, element)
+    end
+end
+function integrate_element(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
     style = map_tuple(TensorStyle, f, get_elementtype(grid))
-    integrate(f, style, fieldtype, grid)
+    integrate_element(f, style, fieldtype, grid)
 end
 
 #########################

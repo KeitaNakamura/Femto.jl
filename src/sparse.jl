@@ -2,7 +2,7 @@
 # SparseMatrixIJV #
 ###################
 
-struct SparseMatrixIJV{T <: Real} <: AbstractMatrix{T}
+struct SparseMatrixIJV{T} <: AbstractMatrix{T}
     I::Vector{Int}
     J::Vector{Int}
     V::Vector{T}
