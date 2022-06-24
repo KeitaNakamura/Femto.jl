@@ -22,13 +22,13 @@ end
 ## constructors
 TensorStyle(f, element::Element) = TensorStyle(f, typeof(element))
 @pure function TensorStyle(f, ::Type{<: BodyElement})
-    nargs = last(methods(f)).nargs - 1
+    nargs = first(methods(f)).nargs - 1
     nargs == 2 && return TensorStyle{Vector}()
     nargs == 3 && return TensorStyle{Matrix}()
     error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
 end
 @pure function TensorStyle(f, ::Type{<: FaceElement})
-    nargs = last(methods(f)).nargs - 1
+    nargs = first(methods(f)).nargs - 1
     nargs == 3 && return TensorStyle{Vector}()
     error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
 end
@@ -116,13 +116,13 @@ end
 # constructors
 MatrixStyle(f, element::Element) = MatrixStyle(f, typeof(element))
 @pure function MatrixStyle(f, ::Type{<: BodyElement})
-    nargs = last(methods(f)).nargs - 1
+    nargs = first(methods(f)).nargs - 1
     nargs == 2 && return MatrixStyle{Vector}()
     nargs == 3 && return MatrixStyle{Matrix}()
     error("wrong number of arguments in `integrate`, use `(index, Nu, Nv)` for matrix or `(index, Nv)` for vector")
 end
 @pure function MatrixStyle(f, ::Type{<: FaceElement})
-    nargs = last(methods(f)).nargs - 1
+    nargs = first(methods(f)).nargs - 1
     nargs == 3 && return MatrixStyle{Vector}()
     error("wrong number of arguments in `integrate`, use `(index, Nv, normal)`")
 end
