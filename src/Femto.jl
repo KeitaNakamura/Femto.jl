@@ -44,14 +44,13 @@ struct ScalarField <: FieldType end
 struct VectorField <: FieldType end
 
 include("dual.jl")
+include("sparse.jl")
+include("utils.jl")
 
 include("shapes.jl")
 include("elements.jl")
-include("sparse.jl")
-include("grid.jl")
-include("utils.jl")
-
 include("integration.jl")
 
+include("grid.jl")
 
 end # module

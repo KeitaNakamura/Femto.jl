@@ -46,15 +46,18 @@ function generate_grid(axes::Vararg{AbstractVector, dim}) where {dim}
     Grid(vec(nodes), _shapetype(Val(dim)), vec(connectivities))
 end
 
-##############
-# integrate! #
-##############
+########################
+# integrate/integrate! #
+########################
 
-function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, dim}) where {T, dim}
+check_size(A::AbstractVector, n::Int) = @assert length(A) == n
+check_size(A::AbstractMatrix, n::Int) = @assert size(A) == (n, n)
+
+## integrate!
+# with IntegrationStyle
+function integrate!(f, A::Union{AbstractVector, AbstractMatrix}, style::IntegrationStyle, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
     n = num_dofs(fieldtype, grid)
-    @assert size(A) == (n,n)
-    element = create_element(grid)
-    style = TensorStyle(f, element)
+    check_size(A, n)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
         @inline function f′(qp, args...)
@@ -62,17 +65,32 @@ function integrate!(f, A::AbstractMatrix, fieldtype::FieldType, grid::Grid{T, di
             f(CartesianIndex(qp, eltindex), args...)
         end
         Ke = integrate(f′, style, fieldtype, element)
-        ginds = dofindices(fieldtype, element, conn)
-        add!(A, ginds, ginds, Ke)
+        eltdofs = dofindices(fieldtype, element, conn)
+        add!(A, eltdofs, Ke)
     end
+    A
+end
+# without IntegrationStyle
+function integrate!(f, A::Union{AbstractVector, AbstractMatrix}, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
+    integrate!(f, A, TensorStyle(f, element), fieldtype, grid, element)
 end
 
-function integrate(f, fieldtype::FieldType, grid::Grid)
+## integrate
+# with IntegrationStyle
+function integrate(f, style::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
     n = num_dofs(fieldtype, grid)
-    sizehint = num_nodes(get_shape(grid)) * num_elements(grid)
+    sizehint = num_dofs(fieldtype, element) * num_elements(grid)
     A = SparseMatrixIJV(n, n; sizehint)
-    integrate!(f, A, fieldtype, grid)
-    A
+    integrate!(f, A, style, fieldtype, grid, element)
+end
+function integrate(f, style::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid{T}, element::Element = create_element(grid)) where {T}
+    n = num_dofs(fieldtype, grid)
+    F = zeros(T, n)
+    integrate!(f, F, style, fieldtype, grid, element)
+end
+# without IntegrationStyle
+function integrate(f, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
+    integrate(f, TensorStyle(f, element), fieldtype, grid, element)
 end
 
 #########################
