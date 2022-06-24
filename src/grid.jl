@@ -9,12 +9,15 @@ get_nodes(grid::Grid) = grid.nodes
 get_shape(grid::Grid) = grid.shape
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
+get_elementtype(grid::Grid) = Base._return_type(create_element, Tuple{typeof(grid)})
 create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
 
 num_nodes(grid::Grid) = length(get_nodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
 num_dofs(::ScalarField, grid::Grid) = num_nodes(grid)
 num_dofs(::VectorField, grid::Grid) = num_nodes(grid) * get_dimension(grid)
+num_elementdofs(::ScalarField, grid::Grid) = num_nodes(get_shape(grid))
+num_elementdofs(::VectorField, grid::Grid) = num_nodes(get_shape(grid)) * get_dimension(grid)
 
 #################
 # generate_grid #
@@ -50,47 +53,63 @@ end
 # integrate/integrate! #
 ########################
 
+const MaybeTuple{T} = Union{T, Tuple{Vararg{T}}}
+
 check_size(A::AbstractVector, n::Int) = @assert length(A) == n
 check_size(A::AbstractMatrix, n::Int) = @assert size(A) == (n, n)
 
+@pure function integrate_function(f, eltindex)
+    @inline function f′(qp, args...)
+        @_propagate_inbounds_meta
+        f(CartesianIndex(qp, eltindex), args...)
+    end
+end
+
+# creating global matrix and vector
+function create_globalmatrix(fieldtype::FieldType, grid::Grid)
+    n = num_dofs(fieldtype, grid)
+    sizehint = num_elementdofs(fieldtype, grid) * num_elements(grid)
+    SparseMatrixIJV(n, n; sizehint)
+end
+function create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T}
+    n = num_dofs(fieldtype, grid)
+    zeros(T, n)
+end
+create_globalarray(::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid) = create_globalmatrix(fieldtype, grid)
+create_globalarray(::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid) = create_globalvector(fieldtype, grid)
+
 ## integrate!
 # with IntegrationStyle
-function integrate!(f, A::Union{AbstractVector, AbstractMatrix}, style::IntegrationStyle, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
+function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
     n = num_dofs(fieldtype, grid)
-    check_size(A, n)
+    map_tuple(check_size, A, n)
+    zeroinit && map_tuple(fillzero!, A)
+    element = create_element(grid)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
-        @inline function f′(qp, args...)
-            @_propagate_inbounds_meta
-            f(CartesianIndex(qp, eltindex), args...)
-        end
-        Ke = integrate(f′, style, fieldtype, element)
+        f′ = map_tuple(integrate_function, f, eltindex)
+        Ke = map_tuple(integrate, f′, style, fieldtype, element)
         eltdofs = dofindices(fieldtype, element, conn)
-        add!(A, eltdofs, Ke)
+        map_tuple(add!, A, eltdofs, Ke)
     end
     A
 end
 # without IntegrationStyle
-function integrate!(f, A::Union{AbstractVector, AbstractMatrix}, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
-    integrate!(f, A, TensorStyle(f, element), fieldtype, grid, element)
+function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
+    style = map_tuple(TensorStyle, f, get_elementtype(grid))
+    integrate!(f, A, style, fieldtype, grid; zeroinit)
 end
 
 ## integrate
 # with IntegrationStyle
-function integrate(f, style::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
-    n = num_dofs(fieldtype, grid)
-    sizehint = num_dofs(fieldtype, element) * num_elements(grid)
-    A = SparseMatrixIJV(n, n; sizehint)
-    integrate!(f, A, style, fieldtype, grid, element)
-end
-function integrate(f, style::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid{T}, element::Element = create_element(grid)) where {T}
-    n = num_dofs(fieldtype, grid)
-    F = zeros(T, n)
-    integrate!(f, F, style, fieldtype, grid, element)
+function integrate(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
+    A = map_tuple(create_globalarray, style, fieldtype, grid)
+    integrate!(f, A, style, fieldtype, grid)
 end
 # without IntegrationStyle
-function integrate(f, fieldtype::FieldType, grid::Grid, element::Element = create_element(grid))
-    integrate(f, TensorStyle(f, element), fieldtype, grid, element)
+function integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
+    style = map_tuple(TensorStyle, f, get_elementtype(grid))
+    integrate(f, style, fieldtype, grid)
 end
 
 #########################

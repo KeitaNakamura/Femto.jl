@@ -57,3 +57,4 @@ function Base.show(io::IO, mime::MIME"text/plain", A::SparseMatrixIJV)
     println(io, m, "×", m, " ", typeof(A), " with ", k, " stored ", k == 1 ? "entry" : "entries", ":")
     isempty(A.I) || Base.print_array(io, sparse(A))
 end
+Base.show(io::IO, A::SparseMatrixIJV) = show(io, sparse(A))
