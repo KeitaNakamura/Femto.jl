@@ -28,23 +28,4 @@
             end
         end
     end
-    @testset "dofindices" begin
-        for shape in (Line2(), Quad4(), Hex8(), Tri6())
-            dim = Femto.get_dimension(shape)
-            conn = Femto.Index(1,3,6)
-            element = Element(shape)
-            # scalar field
-            @test (@inferred Femto.dofindices(ScalarField(), element, conn)) == Femto.Index(1,3,6)
-            # vector field
-            if dim == 1
-                @test (@inferred Femto.dofindices(VectorField(), element, conn)) == Femto.Index(1,3,6)
-            elseif dim == 2
-                @test (@inferred Femto.dofindices(VectorField(), element, conn)) == Femto.Index(1,2,5,6,11,12)
-            elseif dim == 3
-                @test (@inferred Femto.dofindices(VectorField(), element, conn)) == Femto.Index(1,2,3,7,8,9,16,17,18)
-            else
-                error("unreachable")
-            end
-        end
-    end
 end

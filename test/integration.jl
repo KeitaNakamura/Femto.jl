@@ -1,6 +1,6 @@
 using Femto: TensorStyle, MatrixStyle
 
-@testset "B matrix" begin
+@testset "B-matrix" begin
     # dim 1
     element = Element(Line2())
     for qp in 1:Femto.num_quadpoints(element)

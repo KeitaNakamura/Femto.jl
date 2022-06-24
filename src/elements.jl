@@ -95,20 +95,7 @@ get_local_node_coordinates(elt::Element{T}) where {T} = get_local_node_coordinat
 quadpoints(elt::Element{T}) where {T} = quadpoints(T, get_shape(elt))
 quadweights(elt::Element{T}) where {T} = quadweights(T, get_shape(elt))
 
-##############
-# dofindices #
-##############
-
-dofindices(::ScalarField, ::Element, conn::Index) = conn
-
-@generated function dofindices(::VectorField, ::Element{<: Any, dim}, conn::Index{L}) where {dim, L}
-    exps = [:(starts[$i]+$j) for j in 0:dim-1, i in 1:L]
-    quote
-        @_inline_meta
-        starts = @. dim*(conn - 1) + 1
-        @inbounds Index($(exps...))
-    end
-end
+dofindices(ftype::FieldType, element::Element, I) = dofindices(ftype, Val(get_dimension(element)), I)
 
 ###############
 # interpolate #
