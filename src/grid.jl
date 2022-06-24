@@ -94,7 +94,7 @@ create_globalarray(::Type{T}, ::IntegrationStyle{Matrix}, fieldtype::FieldType, 
 create_globalarray(::Type{T}, ::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid) where {T} = create_globalvector(T, fieldtype, grid)
 
 ## assemble global matrix from element matrices
-function assemble!(A::MaybeTuple{AbstractArray}, Kes, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
+function assemble!(A::MaybeTuple{AbstractArray}, Kes::AbstractArray, fieldtype::FieldType, grid::Grid; zeroinit::Bool)
     n = num_dofs(fieldtype, grid)
     map_tuple(check_size, A, n)
     zeroinit && map_tuple(fillzero!, A)
@@ -113,10 +113,13 @@ integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::Fie
     integrate!(f, A, map_tuple(TensorStyle, f, get_elementtype(grid)), fieldtype, grid; zeroinit)
 
 ## integrate
+@pure map_tupletype(f, ::Type{T}) where {T <: Tuple} = (map(f, T.parameters)...,)
+@pure map_tupletype(f, ::Type{T}) where {T} = f(T)
 function integrate(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
     Kes = integrate_element(f, style, fieldtype, grid)
-    A = map_tuple(create_globalarray, eltype(eltype(Kes)), style, fieldtype, grid)
-    assemble!(A, Kes, fieldtype, grid)
+    T = map_tupletype(eltype, eltype(Kes))
+    A = map_tuple(create_globalarray, T, style, fieldtype, grid)
+    assemble!(A, Kes, fieldtype, grid; zeroinit = true)
 end
 integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
     integrate(f, map_tuple(TensorStyle, f, get_elementtype(grid)), fieldtype, grid)
