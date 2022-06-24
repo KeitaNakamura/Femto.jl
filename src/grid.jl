@@ -65,16 +65,21 @@ check_size(A::AbstractMatrix, n::Int) = @assert size(A) == (n, n)
     end
 end
 
-# creating global matrix and vector
-function create_globalmatrix(fieldtype::FieldType, grid::Grid)
+## creating global matrix and vector
+# matrix
+function create_globalmatrix(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
     n = num_dofs(fieldtype, grid)
     sizehint = num_elementdofs(fieldtype, grid) * num_elements(grid)
-    SparseMatrixIJV(n, n; sizehint)
+    SparseMatrixIJV{T}(n, n; sizehint)
 end
-function create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T}
+create_globalmatrix(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, fieldtype, grid)
+# vector
+function create_globalvector(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
     n = num_dofs(fieldtype, grid)
     zeros(T, n)
 end
+create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, fieldtype, grid)
+# from IntegrationStyle
 create_globalarray(::IntegrationStyle{Matrix}, fieldtype::FieldType, grid::Grid) = create_globalmatrix(fieldtype, grid)
 create_globalarray(::IntegrationStyle{Vector}, fieldtype::FieldType, grid::Grid) = create_globalvector(fieldtype, grid)
 
