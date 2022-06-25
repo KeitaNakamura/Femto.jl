@@ -37,7 +37,10 @@ export
     create_globalmatrix,
     integrate!,
     generate_grid,
-    generate_elementstate
+    generate_elementstate,
+    # solve
+    solve!,
+    create_solutionvector
 
 const Index{L} = SVector{L, Int}
 
@@ -54,5 +57,6 @@ include("elements.jl")
 include("integration.jl")
 
 include("grid.jl")
+include("solve.jl")
 
 end # module
