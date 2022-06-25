@@ -383,6 +383,38 @@ function quadweights(::Type{T}, ::Hex27) where {T}
 end
 
 ########
+# Tri3 #
+########
+
+struct Tri3 <: Shape{2} end
+
+@pure num_nodes(::Tri3) = 3
+@pure num_quadpoints(::Tri3) = 1
+
+function get_local_node_coordinates(::Type{T}, ::Tri3) where {T}
+    SVector{3, Vec{2, T}}(
+        (1.0, 0.0),
+        (0.0, 1.0),
+        (0.0, 0.0),
+    )
+end
+
+function Base.values(::Tri3, X::Vec{2, T}) where {T}
+    ξ, η = X
+    ζ = 1 - ξ - η
+    SVector{3, T}(ξ, η, ζ)
+end
+
+function quadpoints(::Type{T}, ::Tri3) where {T}
+    NTuple{1, Vec{2, T}}((
+        (1/3, 1/3),
+    ))
+end
+function quadweights(::Type{T}, ::Tri3) where {T}
+    NTuple{1, T}((0.5,))
+end
+
+########
 # Tri6 #
 ########
 

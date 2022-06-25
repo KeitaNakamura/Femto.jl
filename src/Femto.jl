@@ -30,6 +30,7 @@ export
     Quad9,
     Hex8,
     Hex27,
+    Tri3,
     Tri6,
     # Grid
     Grid,
