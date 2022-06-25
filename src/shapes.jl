@@ -14,10 +14,18 @@ end
     SVector(ntuple(i->A[i,:], Val(N)))
 end
 
-#########
-# Line2 #
-#########
+"""
+    Line2()
 
+# Geometry
+```
+      η
+      ^
+      |
+      |
+1-----+-----2 --> ξ
+```
+"""
 struct Line2 <: Shape{1} end
 
 @pure num_nodes(::Line2) = 2
@@ -47,10 +55,18 @@ function quadweights(::Type{T}, ::Line2) where {T}
     NTuple{1, T}((1,))
 end
 
-#########
-# Line3 #
-#########
+"""
+    Line3()
 
+# Geometry
+```
+      η
+      ^
+      |
+      |
+1-----3-----2 --> ξ
+```
+"""
 struct Line3 <: Shape{1} end
 
 @pure num_nodes(::Line3) = 3
@@ -84,10 +100,23 @@ function quadweights(::Type{T}, ::Line3) where {T}
     NTuple{2, T}((1, 1))
 end
 
-#########
-# Quad4 #
-#########
+"""
+    Quad4()
 
+# Geometry
+```
+      η
+      ^
+      |
+4-----------3
+|     |     |
+|     |     |
+|     +---- | --> ξ
+|           |
+|           |
+1-----------2
+```
+"""
 struct Quad4 <: Shape{2} end
 
 @pure num_nodes(::Quad4) = 4
@@ -125,10 +154,23 @@ function quadweights(::Type{T}, ::Quad4) where {T}
     NTuple{4, T}((1, 1, 1, 1))
 end
 
-#########
-# Quad9 #
-#########
+"""
+    Quad9()
 
+# Geometry
+```
+      η
+      ^
+      |
+4-----7-----3
+|     |     |
+|     |     |
+8     9---- 6 --> ξ
+|           |
+|           |
+1-----5-----2
+```
+"""
 struct Quad9 <: Shape{2} end
 
 @pure num_nodes(::Quad9) = 9
@@ -191,10 +233,25 @@ function quadweights(::Type{T}, ::Quad9) where {T}
     ))
 end
 
-########
-# Hex8 #
-########
+raw"""
+    Hex8()
 
+# Geometry
+```
+       η
+4----------3
+|\     ^   |\
+| \    |   | \
+|  \   |   |  \
+|   8------+---7
+|   |  +-- |-- | -> ξ
+1---+---\--2   |
+ \  |    \  \  |
+  \ |     \  \ |
+   \|      ζ  \|
+    5----------6
+```
+"""
 struct Hex8 <: Shape{3} end
 
 @pure num_nodes(::Hex8) = 8
@@ -244,10 +301,26 @@ function quadweights(::Type{T}, ::Hex8) where {T}
     NTuple{8, T}((1, 1, 1, 1, 1, 1, 1, 1))
 end
 
-#########
-# Hex27 #
-#########
+@doc raw"""
+    Hex27()
 
+# Geometry
+```
+       η
+       ^
+4-----7+---3
+|\     |   |\
+|22    25  | 21
+8  \  9|   6  \
+|  13----16+---12
+|26 |  27--|-24| -> ξ
+1---+-5-\--2   |
+ \ 17    18 \  15
+ 19 |  23 \  20|
+   \|      ζ  \|
+   10----14----11
+```
+"""
 struct Hex27 <: Shape{3} end
 
 @pure num_nodes(::Hex27) = 27
@@ -382,10 +455,23 @@ function quadweights(::Type{T}, ::Hex27) where {T}
     ))
 end
 
-########
-# Tri3 #
-########
+@doc raw"""
+    Tri3()
 
+# Geometry
+```
+η
+^
+|
+2
+|`\
+|  `\
+|    `\
+|      `\
+|        `\
+3----------1 --> ξ
+```
+"""
 struct Tri3 <: Shape{2} end
 
 @pure num_nodes(::Tri3) = 3
@@ -414,10 +500,23 @@ function quadweights(::Type{T}, ::Tri3) where {T}
     NTuple{1, T}((0.5,))
 end
 
-########
-# Tri6 #
-########
+@doc raw"""
+    Tri6()
 
+# Geometry
+```
+η
+^
+|
+2
+|`\
+|  `\
+5    `4
+|      `\
+|        `\
+3-----6----1 --> ξ
+```
+"""
 struct Tri6 <: Shape{2} end
 
 @pure num_nodes(::Tri6) = 6
