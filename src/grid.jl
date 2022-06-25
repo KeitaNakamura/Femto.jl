@@ -106,7 +106,7 @@ end
 
 ## integrate!
 function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
-    Kes = integrate_element(f, style, fieldtype, grid)
+    Kes = integrate_elements(f, style, fieldtype, grid)
     assemble!(A, Kes, fieldtype, grid; zeroinit)
 end
 integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true) =
@@ -116,7 +116,7 @@ integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::Fie
 @pure map_tupletype(f, ::Type{T}) where {T <: Tuple} = (map(f, T.parameters)...,)
 @pure map_tupletype(f, ::Type{T}) where {T} = f(T)
 function integrate(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
-    Kes = integrate_element(f, style, fieldtype, grid)
+    Kes = integrate_elements(f, style, fieldtype, grid)
     T = map_tupletype(eltype, eltype(Kes))
     A = map_tuple(create_globalarray, T, style, fieldtype, grid)
     assemble!(A, Kes, fieldtype, grid; zeroinit = true)
@@ -124,8 +124,8 @@ end
 integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
     integrate(f, map_tuple(TensorStyle, f, get_elementtype(grid)), fieldtype, grid)
 
-## integrate_element
-function integrate_element(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
+## integrate_elements
+function integrate_elements(f::MaybeTuple{Function}, style::MaybeTuple{IntegrationStyle}, fieldtype::FieldType, grid::Grid)
     n = num_dofs(fieldtype, grid)
     element = create_element(grid)
     mappedarray(1:num_elements(grid)) do eltindex
@@ -135,9 +135,9 @@ function integrate_element(f::MaybeTuple{Function}, style::MaybeTuple{Integratio
         Ke = map_tuple(integrate, f′, style, fieldtype, element)
     end
 end
-function integrate_element(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
+function integrate_elements(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
     style = map_tuple(TensorStyle, f, get_elementtype(grid))
-    integrate_element(f, style, fieldtype, grid)
+    integrate_elements(f, style, fieldtype, grid)
 end
 
 #########################
