@@ -1,11 +1,13 @@
 # shape must be unique in grid
 struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     nodes::Vector{Vec{dim, T}}
+    nodeindices::Vector{Int}
     shape::S
     connectivities::Vector{Index{L}}
 end
 
 get_nodes(grid::Grid) = grid.nodes
+get_nodeindices(grid::Grid) = grid.nodeindices
 get_shape(grid::Grid) = grid.shape
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
@@ -21,9 +23,13 @@ num_elementdofs(::VectorField, grid::Grid) = num_nodes(get_shape(grid)) * get_di
 
 dofindices(ftype::FieldType, grid::Grid, I) = dofindices(ftype, Val(get_dimension(grid)), I)
 
-###############
-# eachelement #
-###############
+########################
+# eachnode/eachelement #
+########################
+
+function eachnode(fieldtype::FieldType, grid::Grid)
+    mappedarray(i -> dofindices(fieldtype, grid, i), get_nodeindices(grid))
+end
 
 function eachelement(fieldtype::FieldType, grid::Grid)
     mappedarray(conn -> dofindices(fieldtype, grid, conn), get_connectivities(grid))
@@ -56,7 +62,7 @@ function generate_grid(axes::Vararg{AbstractVector, dim}) where {dim}
     connectivities = map(oneunit(CartesianIndex{dim}):CartesianIndex(dims .- 1)) do I
         Index(broadcast(getindex, Ref(LinearIndices(dims)), _connectivity(I)))
     end
-    Grid(vec(nodes), _shapetype(Val(dim)), vec(connectivities))
+    Grid(vec(nodes), collect(1:length(nodes)), _shapetype(Val(dim)), vec(connectivities))
 end
 
 ########################
