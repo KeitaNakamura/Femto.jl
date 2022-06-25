@@ -41,7 +41,9 @@ export
     generate_elementstate,
     # solve
     solve!,
-    create_solutionvector
+    create_solutionvector,
+    # gmsh
+    readgmsh
 
 const Index{L} = SVector{L, Int}
 
@@ -59,5 +61,7 @@ include("integration.jl")
 
 include("grid.jl")
 include("solve.jl")
+
+include("gmsh.jl")
 
 end # module
