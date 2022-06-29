@@ -131,3 +131,117 @@ end
 
 interpolate(::ScalarField, element::Element, uᵢ::AbstractVector{<: Real}, args...) = interpolate(element, uᵢ, args...)
 interpolate(::VectorField, element::Element{T, dim}, uᵢ::AbstractVector{<: Real}, args...) where {T, dim} = interpolate(element, reinterpret(Vec{dim, T}, uᵢ), args...)
+
+#############
+# integrate #
+#############
+
+struct ElementArrayType{VectorOrMatrix}
+    ElementArrayType{VectorOrMatrix}() where {VectorOrMatrix} = new{VectorOrMatrix::Union{Type{Vector}, Type{Matrix}}}()
+end
+const ElementMatrix = ElementArrayType{Matrix}
+const ElementVector = ElementArrayType{Vector}
+
+function integrate(f, fieldtype::FieldType, element::Element)
+    arrtype = ElementArrayType(f, element)
+    integrate(f, arrtype, fieldtype, element)
+end
+
+function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+    sum(1:num_quadpoints(element)) do qp
+        @_inline_meta
+        @inbounds build_element(f, arraytype, fieldtype, element, qp)
+    end
+end
+
+## constructors
+ElementArrayType(f, element::Element) = ElementArrayType(f, typeof(element))
+@pure function ElementArrayType(f, ::Type{<: BodyElement})
+    nargs = first(methods(f)).nargs - 1
+    nargs == 2 && return ElementVector()
+    nargs == 3 && return ElementMatrix()
+    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
+end
+@pure function ElementArrayType(f, ::Type{<: FaceElement})
+    nargs = first(methods(f)).nargs - 1
+    nargs == 3 && return ElementVector()
+    error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
+end
+
+##############################
+# shape values and gradients #
+##############################
+
+# ScalarField
+shape_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
+shape_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
+# VectorField
+@generated function shape_values(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
+    exps = Expr[]
+    for k in 1:L, d in 1:dim
+        vals = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
+        vec = :(Vec{dim, T}($(vals...)))
+        push!(exps, vec)
+    end
+    quote
+        @_inline_meta
+        @_propagate_inbounds_meta
+        N = element.N[qp]
+        SVector($(exps...))
+    end
+end
+@generated function shape_gradients(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
+    exps = Expr[]
+    for k in 1:L, d in 1:dim
+        grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
+        mat = :(Mat{dim, dim, T}($(grads...)))
+        push!(exps, mat)
+    end
+    quote
+        @_inline_meta
+        @_propagate_inbounds_meta
+        dNdx = element.dNdx[qp]
+        SVector($(exps...))
+    end
+end
+
+#################
+# build_element #
+#################
+
+## build element matrix and vector
+# BodyElement
+@inline function build_element(f, ::ElementArrayType{VectorOrMatrix}, fieldtype::FieldType, element::Element, qp::Int) where {VectorOrMatrix}
+    @_propagate_inbounds_meta
+    N = shape_values(fieldtype, element, qp)
+    dNdx = shape_gradients(fieldtype, element, qp)
+    detJdΩ = element.detJdΩ[qp]
+    u = v = map(dual, N, dNdx)
+    VectorOrMatrix == Vector && return build_element_vector(f, qp, v)    * detJdΩ
+    VectorOrMatrix == Matrix && return build_element_matrix(f, qp, v, u) * detJdΩ
+    error("unreachable")
+end
+# FaceElement
+@inline function build_element(f, ::ElementArrayType{Vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
+    @_propagate_inbounds_meta
+    v = shape_values(fieldtype, element, qp)
+    detJdΩ = element.detJdΩ[qp]
+    normal = element.normal[qp]
+    build_element_vector(f, qp, v, normal) * detJdΩ
+end
+
+# helpers
+@generated function build_element_vector(f, qp, N::SVector{L}, args...) where {L}
+    exps = [:(f(qp, N[$i], args...)) for i in 1:L]
+    quote
+        @_inline_meta
+        @inbounds SVector{$L}($(exps...))
+    end
+end
+@generated function build_element_matrix(f, qp, v::SVector{L1}, u::SVector{L2}) where {L1, L2}
+    exps = [:(f(qp, u[$j], v[$i])) for i in 1:L1, j in 1:L2]
+    quote
+        @_inline_meta
+        @inbounds SMatrix{$L1, $L2}($(exps...))
+    end
+end
