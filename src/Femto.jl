@@ -3,7 +3,7 @@ module Femto
 using Reexport
 using StaticArrays
 using StructArrays
-using MappedArrays
+using LazyArrays
 @reexport using Tensorial
 
 using Base: @pure, @_inline_meta, @_propagate_inbounds_meta

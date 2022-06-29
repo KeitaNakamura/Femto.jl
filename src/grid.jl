@@ -28,11 +28,11 @@ dofindices(ftype::FieldType, grid::Grid, I) = dofindices(ftype, Val(get_dimensio
 ########################
 
 function eachnode(fieldtype::FieldType, grid::Grid)
-    mappedarray(i -> dofindices(fieldtype, grid, i), get_nodeindices(grid))
+    BroadcastArray(i -> dofindices(fieldtype, grid, i), get_nodeindices(grid))
 end
 
 function eachelement(fieldtype::FieldType, grid::Grid)
-    mappedarray(conn -> dofindices(fieldtype, grid, conn), get_connectivities(grid))
+    BroadcastArray(conn -> dofindices(fieldtype, grid, conn), get_connectivities(grid))
 end
 
 #################
@@ -134,7 +134,7 @@ integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
 function integrate_elements(f::MaybeTuple{Function}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid)
     n = num_dofs(fieldtype, grid)
     element = create_element(grid)
-    mappedarray(1:num_elements(grid)) do eltindex
+    BroadcastArray(1:num_elements(grid)) do eltindex
         conn = get_connectivities(grid)[eltindex]
         update!(element, get_nodes(grid)[conn])
         f′ = map_tuple(convert_integrate_function, f, eltindex)
@@ -163,12 +163,12 @@ end
 # interpolate #
 ###############
 
-# returned mappedarray's size is the same as elementstate matrix
+# returned BroadcastArray's size is the same as elementstate matrix
 function interpolate(grid::Grid{T}, nodalvalues::AbstractVector) where {T}
     @assert num_nodes(grid) == length(nodalvalues)
     element = Element{T}(get_shape(grid))
     dims = (num_quadpoints(get_shape(grid)), num_elements(grid))
-    mappedarray(CartesianIndices(dims)) do I
+    BroadcastArray(CartesianIndices(dims)) do I
         qp, eltindex = Tuple(I)
         conn = get_connectivities(grid)[eltindex]
         interpolate(element, nodalvalues[conn], qp)

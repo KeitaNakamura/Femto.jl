@@ -124,7 +124,7 @@ end
 # interpolate `uᵢ` at all quadrature points
 function interpolate(element::Element, uᵢ::AbstractVector)
     @assert num_nodes(element) == length(uᵢ)
-    mappedarray(1:num_quadpoints(element)) do qp
+    BroadcastArray(1:num_quadpoints(element)) do qp
         @inbounds interpolate(element, uᵢ, qp)
     end
 end
