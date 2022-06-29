@@ -20,6 +20,8 @@ export
     Element,
     BodyElement,
     FaceElement,
+    ElementVector,
+    ElementMatrix,
     update!,
     integrate,
     interpolate,
@@ -57,8 +59,6 @@ include("utils.jl")
 
 include("shapes.jl")
 include("elements.jl")
-include("integration.jl")
-
 include("grid.jl")
 include("solve.jl")
 

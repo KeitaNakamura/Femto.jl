@@ -8,8 +8,6 @@ include("utils.jl")
 
 include("shapes.jl")
 include("elements.jl")
-include("integration.jl")
-
 include("grid.jl")
 
 include("gmsh.jl")
