@@ -142,19 +142,6 @@ end
 const ElementMatrix = ElementArrayType{Matrix}
 const ElementVector = ElementArrayType{Vector}
 
-function integrate(f, fieldtype::FieldType, element::Element)
-    arrtype = ElementArrayType(f, element)
-    integrate(f, arrtype, fieldtype, element)
-end
-
-function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
-    sum(1:num_quadpoints(element)) do qp
-        @_inline_meta
-        @inbounds build_element(f, arraytype, fieldtype, element, qp)
-    end
-end
-
-## constructors
 ElementArrayType(f, element::Element) = ElementArrayType(f, typeof(element))
 @pure function ElementArrayType(f, ::Type{<: BodyElement})
     nargs = first(methods(f)).nargs - 1
@@ -167,6 +154,50 @@ end
     nargs == 3 && return ElementVector()
     error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
 end
+
+# create_elementmatrix/create_elementvector
+function create_elementarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, element::Element) where {T}
+    n = num_dofs(fieldtype, element)
+    zeros(T, n, n)
+end
+function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, element::Element) where {T}
+    n = num_dofs(fieldtype, element)
+    zeros(T, n)
+end
+
+# integrate_eltype
+@pure function _integrate_eltype(T_f, T_arraytype, T_fieldtype, T_element)
+    T = eltype(Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int}))
+    if T === Union{} # should be error
+        build_element(f, arraytype, fieldtype, element, 1) # run error code
+        error("something wrong...")
+    elseif T == Any
+        error("type inference failed in `integrate_eltype`, consider using inplace version `integrate!`")
+    end
+    T
+end
+integrate_eltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element) = _integrate_eltype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
+integrate_eltype(f, ftype::FieldType, elt::Element) = integrate_eltype(f, ElementArrayType(f, elt), ftype, elt)
+
+# integrate!
+@inline function integrate!(A::AbstractArray, f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+    @inbounds for qp in 1:num_quadpoints(element)
+        B = build_element(f, arraytype, fieldtype, element, qp)
+        @simd for I in eachindex(A, B)
+            A[I] += B[I]
+        end
+    end
+    A
+end
+@inline integrate!(A::AbstractArray, f, fieldtype::FieldType, element::Element) = integrate!(A, f, ElementArrayType(f, element), fieldtype, element)
+
+# integrate
+@inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+    T = integrate_eltype(f, arraytype, fieldtype, element)
+    A = create_elementarray(T, arraytype, fieldtype, element)
+    integrate!(A, f, arraytype, fieldtype, element)
+end
+@inline integrate(f, fieldtype::FieldType, element::Element) = integrate(f, ElementArrayType(f, element), fieldtype, element)
 
 ##############################
 # shape values and gradients #
@@ -217,8 +248,8 @@ end
     dNdx = shape_gradients(fieldtype, element, qp)
     detJdΩ = element.detJdΩ[qp]
     u = v = map(dual, N, dNdx)
-    VectorOrMatrix == Vector && return build_element_vector(f, qp, v)    * detJdΩ
-    VectorOrMatrix == Matrix && return build_element_matrix(f, qp, v, u) * detJdΩ
+    VectorOrMatrix == Vector && return build_element_vector(f, detJdΩ, qp, v)
+    VectorOrMatrix == Matrix && return build_element_matrix(f, detJdΩ, qp, v, u)
     error("unreachable")
 end
 # FaceElement
@@ -227,21 +258,20 @@ end
     v = shape_values(fieldtype, element, qp)
     detJdΩ = element.detJdΩ[qp]
     normal = element.normal[qp]
-    build_element_vector(f, qp, v, normal) * detJdΩ
+    build_element_vector(f, detJdΩ, qp, v, normal)
 end
 
 # helpers
-@generated function build_element_vector(f, qp, N::SVector{L}, args...) where {L}
-    exps = [:(f(qp, N[$i], args...)) for i in 1:L]
-    quote
+@inline function build_element_vector(f, detJdΩ, qp, v::SVector, args...)
+    mappedarray(v) do vi
         @_inline_meta
-        @inbounds SVector{$L}($(exps...))
+        f(qp, vi, args...) * detJdΩ
     end
 end
-@generated function build_element_matrix(f, qp, v::SVector{L1}, u::SVector{L2}) where {L1, L2}
-    exps = [:(f(qp, u[$j], v[$i])) for i in 1:L1, j in 1:L2]
-    quote
+@inline function build_element_matrix(f, detJdΩ, qp, v::SVector, u::SVector)
+    mappedarray(CartesianIndices((length(v), length(u)))) do I
         @_inline_meta
-        @inbounds SMatrix{$L1, $L2}($(exps...))
+        i, j = Tuple(I)
+        f(qp, u[j], v[i]) * detJdΩ
     end
 end
