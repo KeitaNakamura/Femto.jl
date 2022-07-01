@@ -16,4 +16,23 @@
             end
         end
     end
+    @testset "add!" begin
+        @testset "matrix" begin
+            A = rand(10, 10)
+            I = [1,3,8]
+            J = [2,9,3,5]
+            K = rand(3, 4)
+            A′ = copy(A)
+            A′[I, J] += K
+            @test Femto.add!(A, I, J, K) ≈ A′
+        end
+        @testset "vector" begin
+            A = rand(10)
+            I = [2,9,3,5]
+            F = rand(4)
+            A′ = copy(A)
+            A′[I] += F
+            @test Femto.add!(A, I, F) ≈ A′
+        end
+    end
 end
