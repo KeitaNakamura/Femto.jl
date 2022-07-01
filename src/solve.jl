@@ -32,15 +32,15 @@ end
 # solve! #
 ##########
 
-function solve!(U::SolutionVector, K::AbstractMatrix, F::AbstractVector)
-    @assert length(U) == size(K, 1) == length(F)
-    mask = U.mask
-    for i in Iterators.filter(i -> mask[i], eachindex(mask))
+function solve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, dirichlet_mask::AbstractVector)
+    @assert length(U) == size(K, 1) == length(F) == length(dirichlet_mask)
+    @assert size(K, 1) == size(K, 2)
+    for i in Iterators.filter(i -> dirichlet_mask[i], eachindex(dirichlet_mask))
         @inbounds F .-= U[i] * K[:, i]
     end
-    fdofs = findall(.!mask)
+    fdofs = findall(.!dirichlet_mask)
     @inbounds U[fdofs] = K[fdofs, fdofs] \ F[fdofs]
     U
 end
-solve!(U::SolutionVector, K::SparseMatrixIJV, F::AbstractVector) = solve!(U, sparse(K), F)
+solve!(U::SolutionVector, K::SparseMatrixIJV, F::AbstractVector) = solve!(U.data, sparse(K), F, U.mask)
 
