@@ -1,3 +1,14 @@
+check_volume(::Line2, V) = @test V ≈ 2
+check_volume(::Line3, V) = @test V ≈ 2
+check_volume(::Quad4, V) = @test V ≈ 4
+check_volume(::Quad9, V) = @test V ≈ 4
+check_volume(::Hex8,  V) = @test V ≈ 8
+check_volume(::Hex27, V) = @test V ≈ 8
+check_volume(::Tri3,  V) = @test V ≈ 1/2
+check_volume(::Tri6,  V) = @test V ≈ 1/2
+check_volume(::Tet4,  V) = @test V ≈ 1/6
+check_volume(::Tet10, V) = @test V ≈ 1/6
+
 @testset "Element" begin
     @testset "interpolate" begin
         @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
@@ -26,6 +37,13 @@
                     @test dxdx ≈ one(dxdx) atol=TOL
                 end
             end
+        end
+    end
+    @testset "gauss quadrature" begin
+        @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
+            element = Element(shape)
+            V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
+            check_volume(shape, V)
         end
     end
 end
