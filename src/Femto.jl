@@ -34,6 +34,8 @@ export
     Hex27,
     Tri3,
     Tri6,
+    Tet4,
+    Tet10,
     # Grid
     Grid,
     create_globalvector,

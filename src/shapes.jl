@@ -52,7 +52,7 @@ function quadpoints(::Type{T}, ::Line2) where {T}
     ))
 end
 function quadweights(::Type{T}, ::Line2) where {T}
-    NTuple{1, T}((1,))
+    NTuple{1, T}((2,))
 end
 
 """
@@ -463,13 +463,13 @@ end
 η
 ^
 |
-2
+3
 |`\
 |  `\
 |    `\
 |      `\
 |        `\
-3----------1 --> ξ
+1----------2 --> ξ
 ```
 """
 struct Tri3 <: Shape{2} end
@@ -479,16 +479,15 @@ struct Tri3 <: Shape{2} end
 
 function get_local_node_coordinates(::Type{T}, ::Tri3) where {T}
     SVector{3, Vec{2, T}}(
+        (0.0, 0.0),
         (1.0, 0.0),
         (0.0, 1.0),
-        (0.0, 0.0),
     )
 end
 
 function Base.values(::Tri3, X::Vec{2, T}) where {T}
     ξ, η = X
-    ζ = 1 - ξ - η
-    SVector{3, T}(ξ, η, ζ)
+    SVector{3, T}(1-ξ-η, ξ, η)
 end
 
 function quadpoints(::Type{T}, ::Tri3) where {T}
@@ -508,13 +507,13 @@ end
 η
 ^
 |
-2
+3
 |`\
 |  `\
-5    `4
+5    `6
 |      `\
 |        `\
-3-----6----1 --> ξ
+1-----4----2 --> ξ
 ```
 """
 struct Tri6 <: Shape{2} end
@@ -524,12 +523,12 @@ struct Tri6 <: Shape{2} end
 
 function get_local_node_coordinates(::Type{T}, ::Tri6) where {T}
     SVector{6, Vec{2, T}}(
+        (0.0, 0.0),
         (1.0, 0.0),
         (0.0, 1.0),
-        (0.0, 0.0),
-        (0.5, 0.5),
-        (0.0, 0.5),
         (0.5, 0.0),
+        (0.0, 0.5),
+        (0.5, 0.5),
     )
 end
 
@@ -537,22 +536,150 @@ function Base.values(::Tri6, X::Vec{2, T}) where {T}
     ξ, η = X
     ζ = 1 - ξ - η
     SVector{6, T}(
-        ξ * (2ξ-1),
-        η * (2η-1),
-        ζ * (2ζ-1),
-        4ξ * η,
-        4η * ζ,
+        ζ * (2ζ - 1),
+        ξ * (2ξ - 1),
+        η * (2η - 1),
         4ζ * ξ,
+        4ζ * η,
+        4ξ * η,
     )
 end
 
 function quadpoints(::Type{T}, ::Tri6) where {T}
     NTuple{3, Vec{2, T}}((
-        (1/6, 2/3),
         (1/6, 1/6),
         (2/3, 1/6),
+        (1/6, 2/3),
     ))
 end
 function quadweights(::Type{T}, ::Tri6) where {T}
-    NTuple{3, T}((1/3, 1/3, 1/3))
+    NTuple{3, T}((1/6, 1/6, 1/6))
+end
+
+@doc raw"""
+    Tet4()
+
+# Geometry
+```
+                   η
+                 .
+               ,/
+              /
+           3
+         ,/|`\
+       ,/  |  `\
+     ,/    '.   `\
+   ,/       |     `\
+ ,/         |       `\
+1-----------'.--------2 --> ξ
+ `\.         |      ,/
+    `\.      |    ,/
+       `\.   '. ,/
+          `\. |/
+             `4
+                `\.
+                   ` ζ
+```
+"""
+struct Tet4 <: Shape{3} end
+
+@pure num_nodes(::Tet4) = 4
+@pure num_quadpoints(::Tet4) = 1
+
+function get_local_node_coordinates(::Type{T}, ::Tet4) where {T}
+    SVector{4, Vec{3, T}}(
+        (0.0, 0.0, 0.0),
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+end
+
+function Base.values(::Tet4, X::Vec{3, T}) where {T}
+    ξ, η, ζ = X
+    χ = 1 - ξ - η - ζ
+    SVector{4, T}(χ, ξ, η, ζ)
+end
+
+function quadpoints(::Type{T}, ::Tet4) where {T}
+    NTuple{1, Vec{3, T}}((
+        (1/4, 1/4, 1/4),
+    ))
+end
+function quadweights(::Type{T}, ::Tet4) where {T}
+    NTuple{1, T}((1/6,))
+end
+
+@doc raw"""
+    Tet10()
+
+# Geometry
+```
+                   η
+                 .
+               ,/
+              /
+           3
+         ,/|`\
+       ,/  |  `\
+     ,6    '.   `8
+   ,/       9     `\
+ ,/         |       `\
+1--------5--'.--------2 --> ξ
+ `\.         |      ,/
+    `\.      |    ,10
+       `7.   '. ,/
+          `\. |/
+             `4
+                `\.
+                   ` ζ
+```
+"""
+struct Tet10 <: Shape{3} end
+
+@pure num_nodes(::Tet10) = 10
+@pure num_quadpoints(::Tet10) = 4
+
+function get_local_node_coordinates(::Type{T}, ::Tet10) where {T}
+    SVector{10, Vec{3, T}}(
+        (0.0, 0.0, 0.0),
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+        (0.5, 0.0, 0.0),
+        (0.0, 0.5, 0.0),
+        (0.0, 0.0, 0.5),
+        (0.5, 0.5, 0.0),
+        (0.0, 0.5, 0.5),
+        (0.5, 0.0, 0.5),
+    )
+end
+
+function Base.values(::Tet10, X::Vec{3, T}) where {T}
+    ξ, η, ζ = X
+    χ = 1 - ξ - η - ζ
+    SVector{10, T}(
+        χ * (2χ - 1),
+        ξ * (2ξ - 1),
+        η * (2η - 1),
+        ζ * (2ζ - 1),
+        4ξ * χ,
+        4η * χ,
+        4ζ * χ,
+        4ξ * η,
+        4η * ζ,
+        4ξ * ζ,
+    )
+end
+
+function quadpoints(::Type{T}, ::Tet10) where {T}
+    NTuple{4, Vec{3, T}}((
+        (1/4 -  √5/20, 1/4 -  √5/20, 1/4 -  √5/20),
+        (1/4 + 3√5/20, 1/4 -  √5/20, 1/4 -  √5/20),
+        (1/4 -  √5/20, 1/4 + 3√5/20, 1/4 -  √5/20),
+        (1/4 -  √5/20, 1/4 -  √5/20, 1/4 + 3√5/20),
+    ))
+end
+function quadweights(::Type{T}, ::Tet10) where {T}
+    NTuple{4, T}((1/24, 1/24, 1/24, 1/24))
 end
