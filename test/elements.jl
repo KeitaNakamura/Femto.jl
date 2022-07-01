@@ -48,7 +48,7 @@ check_volume(::Tet10, V) = @test V ≈ 1/6
     end
 end
 
-@testset "Integrate of BodyElement" begin
+@testset "BodyElement integration" begin
     @testset "ScalarField" begin
         fieldtype = ScalarField()
         element = Element(Quad4())
@@ -113,7 +113,7 @@ end
     end
 end
 
-@testset "Integrate of FaceElement" begin
+@testset "FaceElement integration" begin
     @testset "ScalarField" begin
         fieldtype = ScalarField()
         # dim 2
