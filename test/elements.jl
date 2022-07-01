@@ -114,34 +114,36 @@ end
     end
     @testset "VectorField" begin
         fieldtype = VectorField()
-        # dim 2
-        element = FaceElement(Line2())
-        p = rand()
-        normal = normalize(Vec(1,-1))
-        update!(element, [Vec(0.0,0.0), Vec(1.0,1.0)])
-        @test all(≈(normal) , element.normal)
-        F = sum(1:Femto.num_quadpoints(element)) do qp
-            N1, N2 = element.N[qp]
-            N = [N1 0  N2 0
-                 0  N1 0  N2]
-            dΩ = element.detJdΩ[qp]
-            p * N' * normal * dΩ
+        @testset "dim = 2" begin
+            element = FaceElement(Line2())
+            p = rand()
+            normal = normalize(Vec(1,-1))
+            update!(element, [Vec(0.0,0.0), Vec(1.0,1.0)])
+            @test all(≈(normal) , element.normal)
+            F = sum(1:Femto.num_quadpoints(element)) do qp
+                N1, N2 = element.N[qp]
+                N = [N1 0  N2 0
+                     0  N1 0  N2]
+                dΩ = element.detJdΩ[qp]
+                p * N' * normal * dΩ
+            end
+            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
         end
-        @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
-        # dim 3
-        element = FaceElement(Quad4())
-        p = rand()
-        normal = normalize(Vec(1,0,1))
-        update!(element, [Vec(0.0,0.0,0.0), Vec(1.0,0.0,-1.0), Vec(1.0,1.0,-1.0), Vec(0.0,1.0,0.0)])
-        @test all(≈(normal) , element.normal)
-        F = sum(1:Femto.num_quadpoints(element)) do qp
-            N1, N2, N3, N4 = element.N[qp]
-            N = [N1 0  0  N2 0  0  N3 0  0  N4 0  0
-                 0  N1 0  0  N2 0  0  N3 0  0  N4 0
-                 0  0  N1 0  0  N2 0  0  N3 0  0  N4]
-            dΩ = element.detJdΩ[qp]
-            p * N' * normal * dΩ
+        @testset "dim = 3" begin
+            element = FaceElement(Quad4())
+            p = rand()
+            normal = normalize(Vec(1,0,1))
+            update!(element, [Vec(0.0,0.0,0.0), Vec(1.0,0.0,-1.0), Vec(1.0,1.0,-1.0), Vec(0.0,1.0,0.0)])
+            @test all(≈(normal) , element.normal)
+            F = sum(1:Femto.num_quadpoints(element)) do qp
+                N1, N2, N3, N4 = element.N[qp]
+                N = [N1 0  0  N2 0  0  N3 0  0  N4 0  0
+                     0  N1 0  0  N2 0  0  N3 0  0  N4 0
+                     0  0  N1 0  0  N2 0  0  N3 0  0  N4]
+                dΩ = element.detJdΩ[qp]
+                p * N' * normal * dΩ
+            end
+            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
         end
-        @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
     end
 end
