@@ -165,20 +165,6 @@ function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::F
     zeros(T, n)
 end
 
-# integrate_eltype
-@pure function _integrate_eltype(T_f, T_arraytype, T_fieldtype, T_element)
-    T = eltype(Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int}))
-    if T === Union{} # should be error
-        build_element(f, arraytype, fieldtype, element, 1) # run error code
-        error("something wrong...")
-    elseif T == Any
-        error("type inference failed in `integrate_eltype`, consider using inplace version `integrate!`")
-    end
-    T
-end
-integrate_eltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element) = _integrate_eltype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
-integrate_eltype(f, ftype::FieldType, elt::Element) = integrate_eltype(f, ElementArrayType(f, elt), ftype, elt)
-
 # integrate!
 @inline function integrate!(A::AbstractArray, f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
     @inbounds for qp in 1:num_quadpoints(element)
@@ -193,7 +179,9 @@ end
 
 # integrate
 @inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
-    T = integrate_eltype(f, arraytype, fieldtype, element)
+    # create temporal element array to guess its element type
+    # this doesn't affect the performance because the element array is a lazy expression (mappedarray)
+    T = eltype(build_element(f, arraytype, fieldtype, element, 1))
     A = create_elementarray(T, arraytype, fieldtype, element)
     integrate!(A, f, arraytype, fieldtype, element)
 end
