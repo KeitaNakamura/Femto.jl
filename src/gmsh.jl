@@ -1,15 +1,17 @@
 import GmshReader
 
-function gmsh_translate(nodeset::GmshReader.NodeSet) where {T}
+function from_gmsh(nodeset::GmshReader.NodeSet) where {T}
     dim = nodeset.dim
     map(v -> Vec{dim}(i -> v[i]), nodeset.coord)
 end
 
-function gmsh_translate_shape(shape::String)
+function from_gmsh_shape(shape::String)
     shape == "Line 2" && return Line2()
     shape == "Line 3" && return Line3()
     shape == "Triangle 3" && return Tri3()
     shape == "Triangle 6" && return Tri6()
+    shape == "Tetrahedron 4" && return Tet4()
+    shape == "Tetrahedron 10" && return Tet10()
     shape == "Quadrilateral 4" && return Quad4()
     shape == "Quadrilateral 9" && return Quad9()
     shape == "Hexahedron 8" && return Hex8()
@@ -17,38 +19,52 @@ function gmsh_translate_shape(shape::String)
     error("\"$shape\" is not supported yet")
 end
 
-function gmsh_translate(elementset::GmshReader.ElementSet)
-    shape = gmsh_translate_shape(elementset.elementname)
-    connectivities = map(Index{num_nodes(shape)}, elementset.connectivities)
+from_gmsh_connectivity(::Line2) = Index(1,2)
+from_gmsh_connectivity(::Line3) = Index(1,2,3)
+from_gmsh_connectivity(::Tri3)  = Index(1,2,3)
+from_gmsh_connectivity(::Tri6)  = Index(1,2,3,4,6,5)
+from_gmsh_connectivity(::Tet4)  = Index(1,2,3,4)
+from_gmsh_connectivity(::Tet10) = Index(1,2,3,4,5,7,8,6,9,10)
+from_gmsh_connectivity(::Quad4) = Index(1,2,3,4)
+from_gmsh_connectivity(::Quad9) = Index(1,2,3,4,5,6,7,8,9)
+from_gmsh_connectivity(::Hex8)  = Index(1,2,3,4,5,6,7,8)
+from_gmsh_connectivity(::Hex27) = Index(1,2,3,4,9,12,14,10,5,6,7,8,17,19,20,18,11,13,15,16,22,24,25,23)
+
+function from_gmsh(elementset::GmshReader.ElementSet)
+    shape = from_gmsh_shape(elementset.elementname)
+    connectivities = map(elementset.connectivities) do conn
+        @assert num_nodes(shape) == length(conn)
+        conn[from_gmsh_connectivity(shape)]
+    end
     shape, connectivities
 end
 
-function gmsh_translate(phygroup::GmshReader.PhysicalGroup)
+function from_gmsh(phygroup::GmshReader.PhysicalGroup)
     # nodes
     nodeindices = phygroup.nodeset.nodetags
     # elements
     dict = Dict{Shape, Vector{<: Index}}()
     for entitiy in phygroup.entities
         for elementset in entitiy
-            shape, connectivities = gmsh_translate(elementset)
+            shape, connectivities = from_gmsh(elementset)
             append!(get!(dict, shape, Index{num_nodes(shape)}[]), connectivities)
         end
     end
     (nodeindices, only(dict)...) # support only unique shape
 end
 
-function gmsh_translate(gmshfile::GmshReader.GmshFile)
+function from_gmsh(gmshfile::GmshReader.GmshFile)
     dim = gmshfile.nodeset.dim
     # nodes
-    nodes = gmsh_translate(gmshfile.nodeset)
+    nodes = from_gmsh(gmshfile.nodeset)
     # elements
     Dict{String, Grid{Float64, dim}}(map(collect(gmshfile.physicalgroups)) do (name, phygroup)
-        nodeindices, shape, connectivities = gmsh_translate(phygroup)
+        nodeindices, shape, connectivities = from_gmsh(phygroup)
         name => Grid(nodes, nodeindices, shape, connectivities)
     end)
 end
 
 function readgmsh(filename::String)
     file = GmshReader.readgmsh(filename; fixsurface = true)
-    gmsh_translate(file)
+    from_gmsh(file)
 end
