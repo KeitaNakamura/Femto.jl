@@ -166,20 +166,24 @@ function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::F
 end
 
 # infer_integeltype
-@pure function _infer_integeltype(T_f, T_arraytype, T_fieldtype, T_element)
+@pure function infer_integeltype(T_f::Type, T_arraytype::Type, T_fieldtype::Type, T_element::Type)
     T = eltype(Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int}))
-    if T === Union{} # should be error
-        build_element(f, arraytype, fieldtype, element, 1) # run error code
-        error("something wrong...")
-    elseif T == Any
+    if T == Any
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     T
 end
-infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element) = _infer_integeltype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
+function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element)
+    T = infer_integeltype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
+    if T == Union{}
+        first(build_element(f, arrtype, ftype, elt, 1)) # run to throw error
+        error("unreachable")
+    end
+    T
+end
 
 # integrate!
-@inline function integrate!(A::AbstractArray, f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+@inline function integrate!(f, A::AbstractArray, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
     @inbounds for qp in 1:num_quadpoints(element)
         B = build_element(f, arraytype, fieldtype, element, qp)
         @simd for I in eachindex(A, B)
@@ -188,13 +192,13 @@ infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element) 
     end
     A
 end
-@inline integrate!(A::AbstractArray, f, fieldtype::FieldType, element::Element) = integrate!(A, f, ElementArrayType(f, element), fieldtype, element)
+@inline integrate!(f, A::AbstractArray, fieldtype::FieldType, element::Element) = integrate!(f, A, ElementArrayType(f, element), fieldtype, element)
 
 # integrate
 @inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
     T = infer_integeltype(f, arraytype, fieldtype, element)
     A = create_elementarray(T, arraytype, fieldtype, element)
-    integrate!(A, f, arraytype, fieldtype, element)
+    integrate!(f, A, arraytype, fieldtype, element)
 end
 @inline integrate(f, fieldtype::FieldType, element::Element) = integrate(f, ElementArrayType(f, element), fieldtype, element)
 

@@ -85,7 +85,7 @@ end
 # matrix
 function create_globalmatrix(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
     n = num_dofs(fieldtype, grid)
-    sizehint = num_elementdofs(fieldtype, grid) * num_elements(grid)
+    sizehint = 2*num_elementdofs(fieldtype, grid) * num_elements(grid)
     SparseMatrixIJV{T}(n, n; sizehint)
 end
 create_globalmatrix(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, fieldtype, grid)
@@ -99,21 +99,32 @@ create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T} = create_glob
 create_globalarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, grid::Grid) where {T} = create_globalmatrix(T, fieldtype, grid)
 create_globalarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, grid::Grid) where {T} = create_globalvector(T, fieldtype, grid)
 
-## assemble global matrix from element matrices
-function assemble!(A::MaybeTuple{AbstractArray}, Kes::AbstractArray, fieldtype::FieldType, grid::Grid; zeroinit::Bool)
-    n = num_dofs(fieldtype, grid)
-    map_tuple(check_size, A, n)
-    zeroinit && map_tuple(fillzero!, A)
-    for (Ke, eltdofs) in zip(Kes, eachelement(fieldtype, grid))
-        map_tuple(add!, A, eltdofs, Ke)
+## infer_integeltype
+function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, grid::Grid)
+    f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
+    T = infer_integeltype(typeof(f′), typeof(arrtype), typeof(ftype), get_elementtype(grid))
+    if T == Union{}
+        first(build_element(f′, arrtype, ftype, create_element(grid), 1)) # run to throw error
+        error("unreachable")
     end
-    A
+    T
 end
 
 ## integrate!
 function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
-    Kes = integrate_elements(f, arrtype, fieldtype, grid)
-    assemble!(A, Kes, fieldtype, grid; zeroinit)
+    map_tuple(check_size, A, num_dofs(fieldtype, grid))
+    zeroinit && map_tuple(fillzero!, A)
+    element = create_element(grid)
+    Ke = map_tuple(create_elementarray, map_tuple(eltype, A), arrtype, fieldtype, element)
+    for (eltindex, conn) in enumerate(get_connectivities(grid))
+        update!(element, get_nodes(grid)[conn])
+        f′ = map_tuple(convert_integrate_function, f, eltindex)
+        map_tuple(fillzero!, Ke)
+        map_tuple(integrate!, f′, Ke, arrtype, fieldtype, element)
+        eltdofs = dofindices(fieldtype, grid, conn)
+        map_tuple(add!, A, eltdofs, Ke)
+    end
+    A
 end
 integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true) =
     integrate!(f, A, map_tuple(ElementArrayType, f, get_elementtype(grid)), fieldtype, grid; zeroinit)
@@ -122,29 +133,12 @@ integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::Fie
 @pure map_tupletype(f, ::Type{T}) where {T <: Tuple} = (map(f, T.parameters)...,)
 @pure map_tupletype(f, ::Type{T}) where {T} = f(T)
 function integrate(f::MaybeTuple{Function}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid)
-    Kes = integrate_elements(f, arrtype, fieldtype, grid)
-    T = map_tupletype(eltype, eltype(Kes))
+    T = map_tuple(infer_integeltype, f, arrtype, fieldtype, grid)
     A = map_tuple(create_globalarray, T, arrtype, fieldtype, grid)
-    assemble!(A, Kes, fieldtype, grid; zeroinit = true)
+    integrate!(f, A, arrtype, fieldtype, grid)
 end
 integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
     integrate(f, map_tuple(ElementArrayType, f, get_elementtype(grid)), fieldtype, grid)
-
-## integrate_elements
-function integrate_elements(f::MaybeTuple{Function}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid)
-    n = num_dofs(fieldtype, grid)
-    element = create_element(grid)
-    mappedarray(1:num_elements(grid)) do eltindex
-        conn = get_connectivities(grid)[eltindex]
-        update!(element, get_nodes(grid)[conn])
-        f′ = map_tuple(convert_integrate_function, f, eltindex)
-        Ke = map_tuple(integrate, f′, arrtype, fieldtype, element)
-    end
-end
-function integrate_elements(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid)
-    arrtype = map_tuple(ElementArrayType, f, get_elementtype(grid))
-    integrate_elements(f, arrtype, fieldtype, grid)
-end
 
 #########################
 # generate_elementstate #
