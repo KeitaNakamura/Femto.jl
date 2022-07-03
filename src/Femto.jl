@@ -45,7 +45,6 @@ export
     generate_elementstate,
     # solve
     solve!,
-    create_solutionvector,
     # gmsh
     readgmsh
 
