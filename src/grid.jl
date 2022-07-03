@@ -112,33 +112,33 @@ end
 
 ## integrate!
 function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
-    map_tuple(check_size, A, num_dofs(fieldtype, grid))
-    zeroinit && map_tuple(fillzero!, A)
+    @~ check_size(A, num_dofs(fieldtype, grid))
+    zeroinit && @~ fillzero!(A)
     element = create_element(grid)
-    Ke = map_tuple(create_elementarray, map_tuple(eltype, A), arrtype, fieldtype, element)
+    Ke = @~ create_elementarray((@~ eltype(A)), arrtype, fieldtype, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_nodes(grid)[conn])
-        f′ = map_tuple(convert_integrate_function, f, eltindex)
-        map_tuple(fillzero!, Ke)
-        map_tuple(integrate!, f′, Ke, arrtype, fieldtype, element)
+        f′ = @~ convert_integrate_function(f, eltindex)
+        @~ fillzero!(Ke)
+        @~ integrate!(f′, Ke, arrtype, fieldtype, element)
         eltdofs = dofindices(fieldtype, grid, conn)
-        map_tuple(add!, A, eltdofs, Ke)
+        @~ add!(A, eltdofs, Ke)
     end
     A
 end
 integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true) =
-    integrate!(f, A, map_tuple(ElementArrayType, f, get_elementtype(grid)), fieldtype, grid; zeroinit)
+    integrate!(f, A, (@~ ElementArrayType(f, get_elementtype(grid))), fieldtype, grid; zeroinit)
 
 ## integrate
 @pure map_tupletype(f, ::Type{T}) where {T <: Tuple} = (map(f, T.parameters)...,)
 @pure map_tupletype(f, ::Type{T}) where {T} = f(T)
 function integrate(f::MaybeTuple{Function}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid)
-    T = map_tuple(infer_integeltype, f, arrtype, fieldtype, grid)
-    A = map_tuple(create_globalarray, T, arrtype, fieldtype, grid)
+    T = @~ infer_integeltype(f, arrtype, fieldtype, grid)
+    A = @~ create_globalarray(T, arrtype, fieldtype, grid)
     integrate!(f, A, arrtype, fieldtype, grid)
 end
 integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
-    integrate(f, map_tuple(ElementArrayType, f, get_elementtype(grid)), fieldtype, grid)
+    integrate(f, (@~ ElementArrayType(f, get_elementtype(grid))), fieldtype, grid)
 
 #########################
 # generate_elementstate #

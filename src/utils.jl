@@ -79,3 +79,7 @@ promote_tuple_length(xs::Type{<: NTuple{N, Any}}...) where {N} = N
         end
     end
 end
+macro ~(expr::Expr)
+    Meta.isexpr(expr, :call)
+    esc(:($map_tuple($(expr.args...))))
+end
