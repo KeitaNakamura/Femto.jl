@@ -233,7 +233,7 @@ function quadweights(::Type{T}, ::Quad9) where {T}
     ))
 end
 
-raw"""
+@doc raw"""
     Hex8()
 
 # Geometry
