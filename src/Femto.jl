@@ -26,6 +26,7 @@ export
     integrate,
     interpolate,
     # Shape
+    Shape,
     Line2,
     Line3,
     Quad4,
