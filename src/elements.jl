@@ -53,7 +53,9 @@ function FaceElement{T}(shape::Shape{shape_dim}) where {T, shape_dim}
     N = zeros(SVector{L, T}, n)
     normal = zeros(Vec{dim, T}, n)
     detJdΩ = zeros(T, n)
-    FaceElement(shape, N, normal, detJdΩ)
+    element = FaceElement(shape, N, normal, detJdΩ)
+    update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_node_coordinates(shape)))
+    element
 end
 FaceElement(shape::Shape) = FaceElement{Float64}(shape)
 
