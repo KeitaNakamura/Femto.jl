@@ -72,5 +72,6 @@ include("grid.jl")
 include("solve.jl")
 
 include("gmsh.jl")
+include("vtk.jl")
 
 end # module
