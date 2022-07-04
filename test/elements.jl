@@ -1,13 +1,13 @@
-check_volume(::Line2, V) = @test V ≈ 2
-check_volume(::Line3, V) = @test V ≈ 2
-check_volume(::Quad4, V) = @test V ≈ 4
-check_volume(::Quad9, V) = @test V ≈ 4
-check_volume(::Hex8,  V) = @test V ≈ 8
-check_volume(::Hex27, V) = @test V ≈ 8
-check_volume(::Tri3,  V) = @test V ≈ 1/2
-check_volume(::Tri6,  V) = @test V ≈ 1/2
-check_volume(::Tet4,  V) = @test V ≈ 1/6
-check_volume(::Tet10, V) = @test V ≈ 1/6
+get_volume(::Line2) = 2
+get_volume(::Line3) = 2
+get_volume(::Quad4) = 4
+get_volume(::Quad9) = 4
+get_volume(::Hex8) = 8
+get_volume(::Hex27) = 8
+get_volume(::Tri3) = 1/2
+get_volume(::Tri6) = 1/2
+get_volume(::Tet4) = 1/6
+get_volume(::Tet10) = 1/6
 
 @testset "Element" begin
     @testset "interpolate" begin
@@ -43,7 +43,7 @@ check_volume(::Tet10, V) = @test V ≈ 1/6
         @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
             element = Element(shape)
             V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
-            check_volume(shape, V)
+            @test V ≈ get_volume(shape)
         end
     end
 end
