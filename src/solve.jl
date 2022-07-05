@@ -8,4 +8,4 @@ function solve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, dirichl
     @inbounds U[fdofs] = K[fdofs, fdofs] \ F[fdofs]
     U
 end
-solve!(U::AbstractVector, K::SparseMatrixIJV, F::AbstractVector, dirichlet::AbstractVector{Bool}) = solve!(U, sparse(K), F, dirichlet)
+solve!(U::AbstractVector, K::SparseMatrixCOO, F::AbstractVector, dirichlet::AbstractVector{Bool}) = solve!(U, sparse(K), F, dirichlet)

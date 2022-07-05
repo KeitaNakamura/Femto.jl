@@ -10,9 +10,16 @@ using Base: @pure, @_inline_meta, @_propagate_inbounds_meta
 using LinearAlgebra
 using SparseArrays
 
+# reexport
+export
+    sparse,
+    spdiagm
+
 export
     # dual
     ∇,
+    # sparse
+    SparseMatrixCOO,
     # field
     ScalarField,
     VectorField,

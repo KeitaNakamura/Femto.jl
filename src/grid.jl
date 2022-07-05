@@ -85,8 +85,8 @@ end
 # matrix
 function create_globalmatrix(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
     n = num_dofs(fieldtype, grid)
-    sizehint = 2*num_elementdofs(fieldtype, grid) * num_elements(grid)
-    SparseMatrixIJV{T}(n, n; sizehint)
+    sizehint = num_elementdofs(fieldtype, grid)^2 * num_elements(grid)
+    SparseMatrixCOO{T}(n, n; sizehint)
 end
 create_globalmatrix(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, fieldtype, grid)
 # vector
