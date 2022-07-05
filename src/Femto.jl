@@ -46,6 +46,8 @@ export
     Tet10,
     # Grid
     Grid,
+    eachnode,
+    eachelement,
     create_globalvector,
     create_globalmatrix,
     integrate!,
