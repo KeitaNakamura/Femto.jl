@@ -10,6 +10,20 @@ function Grid(shape::Shape, nodes::Vector{<: Vec}, connectivities::Vector{<: Ind
     Grid(shape, nodes, connectivities, collect(1:length(nodes)))
 end
 
+# useful to extend the dimension (e.g., dim=2 -> dim=3)
+function Grid{T, dim}(grid::Grid) where {T, dim}
+    shape = get_shape(grid)
+    nodes = map(x -> Vec{dim, T}(Tensorial.resizedim(x, Val(dim))), get_nodes(grid))
+    connectivities = get_connectivities(grid)
+    nodeindices = get_nodeindices(grid)
+    Grid(shape, nodes, connectivities, nodeindices)
+end
+Grid{T, dim}(grid::Grid{T, dim}) where {T, dim} = grid
+
+#########
+# utils #
+#########
+
 get_nodes(grid::Grid) = grid.nodes
 get_nodeindices(grid::Grid) = grid.nodeindices
 get_shape(grid::Grid) = grid.shape
