@@ -60,7 +60,7 @@ function from_gmsh(gmshfile::GmshReader.GmshFile)
     # elements
     Dict{String, Grid{Float64, dim}}(map(collect(gmshfile.physicalgroups)) do (name, phygroup)
         nodeindices, shape, connectivities = from_gmsh(phygroup)
-        name => Grid(nodes, nodeindices, shape, connectivities)
+        name => Grid(shape, nodes, connectivities, nodeindices)
     end)
 end
 

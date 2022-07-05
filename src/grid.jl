@@ -1,9 +1,13 @@
 # shape must be unique in grid
 struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
-    nodes::Vector{Vec{dim, T}}
-    nodeindices::Vector{Int}
     shape::S
+    nodes::Vector{Vec{dim, T}}
     connectivities::Vector{Index{L}}
+    nodeindices::Vector{Int}
+end
+
+function Grid(shape::Shape, nodes::Vector{<: Vec}, connectivities::Vector{<: Index})
+    Grid(shape, nodes, connectivities, collect(1:length(nodes)))
 end
 
 get_nodes(grid::Grid) = grid.nodes
@@ -39,9 +43,9 @@ end
 # generate_grid #
 #################
 
-_shapetype(::Val{1}) = Line2()
-_shapetype(::Val{2}) = Quad4()
-_shapetype(::Val{3}) = Hex8()
+default_shapetype(::Val{1}) = Line2()
+default_shapetype(::Val{2}) = Quad4()
+default_shapetype(::Val{3}) = Hex8()
 function _connectivity(I::CartesianIndex{1})
     i = I[1]
     (CartesianIndex(i), CartesianIndex(i+1))
@@ -62,7 +66,7 @@ function generate_grid(axes::Vararg{AbstractVector, dim}) where {dim}
     connectivities = map(oneunit(CartesianIndex{dim}):CartesianIndex(dims .- 1)) do I
         Index(broadcast(getindex, Ref(LinearIndices(dims)), _connectivity(I)))
     end
-    Grid(vec(nodes), collect(1:length(nodes)), _shapetype(Val(dim)), vec(connectivities))
+    Grid(default_shapetype(Val(dim)), vec(nodes), vec(connectivities))
 end
 
 ########################
