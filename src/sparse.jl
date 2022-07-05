@@ -1,8 +1,8 @@
 ###################
-# SparseMatrixIJV #
+# SparseMatrixCOO #
 ###################
 
-struct SparseMatrixIJV{T} <: AbstractMatrix{T}
+struct SparseMatrixCOO{T} <: AbstractMatrix{T}
     I::Vector{Int}
     J::Vector{Int}
     V::Vector{T}
@@ -10,23 +10,23 @@ struct SparseMatrixIJV{T} <: AbstractMatrix{T}
     n::Int
 end
 
-function SparseMatrixIJV{T}(m::Int, n::Int; sizehint::Int = 0) where T
+function SparseMatrixCOO{T}(m::Int, n::Int; sizehint::Int = 0) where T
     I = Int[]
     J = Int[]
     V = T[]
     sizehint!(I, sizehint)
     sizehint!(J, sizehint)
     sizehint!(V, sizehint)
-    SparseMatrixIJV(I, J, V, m, n)
+    SparseMatrixCOO(I, J, V, m, n)
 end
-SparseMatrixIJV(m::Int, n::Int; sizehint::Int = 0) = SparseMatrixIJV{Float64}(m, n; sizehint)
+SparseMatrixCOO(m::Int, n::Int; sizehint::Int = round(Int, 0.01*m*n)) = SparseMatrixCOO{Float64}(m, n; sizehint)
 
-Base.size(A::SparseMatrixIJV) = (A.m, A.n)
+Base.size(A::SparseMatrixCOO) = (A.m, A.n)
 
-SparseArrays.sparse(A::SparseMatrixIJV) = sparse(A, size(A)...)
-SparseArrays.sparse(A::SparseMatrixIJV, m::Int, n::Int, args...) = sparse(A.I, A.J, A.V, m, n, args...)
+SparseArrays.sparse(A::SparseMatrixCOO) = sparse(A, size(A)...)
+SparseArrays.sparse(A::SparseMatrixCOO, m::Int, n::Int, args...) = sparse(A.I, A.J, A.V, m, n, args...)
 
-function add!(A::SparseMatrixIJV, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
+function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
     m, n = map(length, (I, J))
     @assert size(K) == (m, n)
     append!(A.V, K)
@@ -38,23 +38,24 @@ function add!(A::SparseMatrixIJV, I::AbstractVector{Int}, J::AbstractVector{Int}
     end
     A
 end
-function add!(A::SparseMatrixIJV, I::AbstractVector{Int}, K::AbstractMatrix)
+function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, K::AbstractMatrix)
     add!(A, I, I, K)
 end
 
-fillzero!(A::SparseMatrixIJV) = (map(empty!, findnz(A)); A)
+fillzero!(A::SparseMatrixCOO) = (map(empty!, findnz(A)); A)
 fillzero!(A::SparseMatrixCSC) = dropzeros!(fill!(A, 0))
-SparseArrays.findnz(A::SparseMatrixIJV) = A.I, A.J, A.V
+SparseArrays.findnz(A::SparseMatrixCOO) = A.I, A.J, A.V
 
-Base.:\(A::SparseMatrixIJV, b::AbstractVector) = sparse(A) \ b
+Base.:\(A::SparseMatrixCOO, b::AbstractVector) = sparse(A) \ b
 
-function Base.show(io::IO, mime::MIME"text/plain", A::SparseMatrixIJV)
+function Base.show(io::IO, mime::MIME"text/plain", A::SparseMatrixCOO)
     if !haskey(io, :compact) && length(axes(A, 2)) > 1
         io = IOContext(io, :compact => true)
     end
-    m, n = size(A)
-    k = length(A.I)
+    S = sparse(A)
+    m, n = size(S)
+    k = nnz(S)
     println(io, m, "×", m, " ", typeof(A), " with ", k, " stored ", k == 1 ? "entry" : "entries", ":")
-    isempty(A.I) || Base.print_array(io, sparse(A))
+    isempty(A.I) || Base.print_array(io, S)
 end
-Base.show(io::IO, A::SparseMatrixIJV) = show(io, sparse(A))
+Base.show(io::IO, A::SparseMatrixCOO) = show(io, sparse(A))
