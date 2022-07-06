@@ -1,5 +1,5 @@
 # shape must be unique in grid
-struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
+struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L} <: AbstractVector{Vec{dim, T}}
     shape::S
     nodes::Vector{Vec{dim, T}}
     connectivities::Vector{Index{L}}
@@ -13,18 +13,26 @@ end
 # useful to extend the dimension (e.g., dim=2 -> dim=3)
 function Grid{T, dim}(grid::Grid) where {T, dim}
     shape = get_shape(grid)
-    nodes = map(x -> Vec{dim, T}(Tensorial.resizedim(x, Val(dim))), get_nodes(grid))
+    nodes = map(x -> Vec{dim, T}(Tensorial.resizedim(x, Val(dim))), get_allnodes(grid))
     connectivities = get_connectivities(grid)
     nodeindices = get_nodeindices(grid)
     Grid(shape, nodes, connectivities, nodeindices)
 end
 Grid{T, dim}(grid::Grid{T, dim}) where {T, dim} = grid
 
+############################
+# AbstractVector interface #
+############################
+
+Base.size(grid::Grid) = (num_allnodes(grid),)
+Base.getindex(grid::Grid, i::Int) = (@_propagate_inbounds_meta; get_allnodes(grid)[i])
+Base.setindex!(grid::Grid, x, i::Int) = (@_propagate_inbounds_meta; get_allnodes(grid)[i] = x; grid)
+
 #########
 # utils #
 #########
 
-get_nodes(grid::Grid) = grid.nodes
+get_allnodes(grid::Grid) = grid.nodes
 get_nodeindices(grid::Grid) = grid.nodeindices
 get_shape(grid::Grid) = grid.shape
 get_connectivities(grid::Grid) = grid.connectivities
@@ -32,10 +40,10 @@ get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
 get_elementtype(grid::Grid) = Base._return_type(create_element, Tuple{typeof(grid)})
 create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
 
-num_nodes(grid::Grid) = length(get_nodes(grid))
+num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
-num_dofs(::ScalarField, grid::Grid) = num_nodes(grid)
-num_dofs(::VectorField, grid::Grid) = num_nodes(grid) * get_dimension(grid)
+num_dofs(::ScalarField, grid::Grid) = num_allnodes(grid)
+num_dofs(::VectorField, grid::Grid) = num_allnodes(grid) * get_dimension(grid)
 num_elementdofs(::ScalarField, grid::Grid) = num_nodes(get_shape(grid))
 num_elementdofs(::VectorField, grid::Grid) = num_nodes(get_shape(grid)) * get_dimension(grid)
 
@@ -135,7 +143,7 @@ function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, arrty
     element = create_element(grid)
     Ke = @~ create_elementarray((@~ eltype(A)), arrtype, fieldtype, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
-        update!(element, get_nodes(grid)[conn])
+        update!(element, get_allnodes(grid)[conn])
         f′ = @~ convert_integrate_function(f, eltindex)
         @~ fillzero!(Ke)
         @~ integrate!(f′, Ke, arrtype, fieldtype, element)
@@ -166,7 +174,7 @@ function generate_elementstate(::Type{ElementState}, grid::Grid) where {ElementS
     elementstate = StructArray{ElementState}(undef, num_quadpoints(get_shape(grid)), num_elements(grid))
     fillzero!(elementstate)
     if :x in propertynames(elementstate)
-        elementstate.x .= interpolate(grid, get_nodes(grid))
+        elementstate.x .= interpolate(grid, get_allnodes(grid))
     end
     elementstate
 end
@@ -177,7 +185,7 @@ end
 
 # returned mappedarray's size is the same as elementstate matrix
 function interpolate(grid::Grid{T}, nodalvalues::AbstractVector) where {T}
-    @assert num_nodes(grid) == length(nodalvalues)
+    @assert num_allnodes(grid) == length(nodalvalues)
     element = Element{T}(get_shape(grid))
     dims = (num_quadpoints(get_shape(grid)), num_elements(grid))
     mappedarray(CartesianIndices(dims)) do I

@@ -3,17 +3,17 @@
         # dim 1
         axs = (0:1.0:3.0,)
         grid = @inferred generate_grid(axs...)
-        @test Femto.get_nodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
+        @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
         @test Femto.get_shape(grid) === Line2()
         # dim 2
         axs = (0:1.0:3.0, 0:0.5:2.0)
         grid = @inferred generate_grid(axs...)
-        @test Femto.get_nodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
+        @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
         @test Femto.get_shape(grid) === Quad4()
         # dim 3
         axs = (0:1.0:3.0, 0:0.5:2.0, 0:0.2:3.0)
         grid = @inferred generate_grid(axs...)
-        @test Femto.get_nodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
+        @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
         @test Femto.get_shape(grid) === Hex8()
         # connectivities
         grid = @inferred generate_grid(0:0.5:1, 0:1:2)
@@ -54,13 +54,13 @@ end
     element = Element(shape)
     eltstate = @inferred generate_elementstate(ElementState, grid)
     @test size(eltstate) == (Femto.num_quadpoints(shape), Femto.num_elements(grid))
-    X = @inferred interpolate(grid, Femto.get_nodes(grid))
+    X = @inferred interpolate(grid, Femto.get_allnodes(grid))
     for I in CartesianIndices(eltstate)
         qp, eltindex = Tuple(I)
         conn = Femto.get_connectivities(grid)[eltindex]
         q = eltstate[I]
         @test q isa ElementState
-        @test q.x ≈ interpolate(element, Femto.get_nodes(grid)[conn], qp)
+        @test q.x ≈ interpolate(element, Femto.get_allnodes(grid)[conn], qp)
         @test q.x ≈ X[I]
         @test q.σ == zero(q.σ)
         @test q.index == zero(q.index)

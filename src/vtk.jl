@@ -35,7 +35,7 @@ function WriteVTK.vtk_grid(filename::AbstractString, grid::Grid{T, dim}; kwargs.
     for conn in get_connectivities(grid)
         push!(cells, MeshCell(celltype, conn[to_vtk_connectivity(shape)]))
     end
-    points = reshape(reinterpret(T, get_nodes(grid)), (dim, num_nodes(grid)))
+    points = reshape(reinterpret(T, get_allnodes(grid)), (dim, num_allnodes(grid)))
     vtk_grid(filename, points, cells; kwargs...)
 end
 
