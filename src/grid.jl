@@ -1,5 +1,5 @@
 # shape must be unique in grid
-struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L} <: AbstractVector{Vec{dim, T}}
+struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     shape::S
     nodes::Vector{Vec{dim, T}}
     connectivities::Vector{Index{L}}
@@ -19,14 +19,6 @@ function Grid{T, dim}(grid::Grid) where {T, dim}
     Grid(shape, nodes, connectivities, nodeindices)
 end
 Grid{T, dim}(grid::Grid{T, dim}) where {T, dim} = grid
-
-############################
-# AbstractVector interface #
-############################
-
-Base.size(grid::Grid) = (num_allnodes(grid),)
-Base.getindex(grid::Grid, i::Int) = (@_propagate_inbounds_meta; get_allnodes(grid)[i])
-Base.setindex!(grid::Grid, x, i::Int) = (@_propagate_inbounds_meta; get_allnodes(grid)[i] = x; grid)
 
 #########
 # utils #
