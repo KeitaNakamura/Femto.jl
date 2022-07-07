@@ -46,6 +46,9 @@ export
     Tet10,
     # Grid
     Grid,
+    num_dofs,
+    num_allnodes,
+    get_allnodes,
     eachnode,
     eachelement,
     create_globalvector,
