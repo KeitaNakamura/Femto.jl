@@ -11,3 +11,5 @@ include("elements.jl")
 include("grid.jl")
 
 include("gmsh.jl")
+
+include("examples.jl")
