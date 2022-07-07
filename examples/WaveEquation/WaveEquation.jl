@@ -12,8 +12,8 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     M = zeros(ndofs)
     F = zeros(ndofs)
 
-    K̃(index,v,δv) = ∇(δv) ⋅ ∇(v)
-    F̃(index,δv) = δv
+    K̃(index,u,v) = ∇(v) ⋅ ∇(u)
+    F̃(index,v) = v
 
     Uₙ = zeros(ndofs)
     Uₙ₋₁ = zeros(ndofs)
