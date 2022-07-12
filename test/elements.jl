@@ -9,6 +9,17 @@ get_volume(::Tri6) = 1/2
 get_volume(::Tet4) = 1/6
 get_volume(::Tet10) = 1/6
 
+highorder(::Line2) = Line3()
+highorder(::Line3) = nothing
+highorder(::Quad4) = Quad9()
+highorder(::Quad9) = nothing
+highorder(::Hex8)  = Hex27()
+highorder(::Hex27) = nothing
+highorder(::Tri3)  = Tri6()
+highorder(::Tri6)  = nothing
+highorder(::Tet4)  = Tet10()
+highorder(::Tet10) = nothing
+
 @testset "Element" begin
     @testset "interpolate" begin
         @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
@@ -42,6 +53,12 @@ get_volume(::Tet10) = 1/6
     @testset "gauss quadrature" begin
         @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
             element = Element(shape)
+            V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
+            @test V ≈ get_volume(shape)
+            # high order quadrature
+            shape_qr = highorder(shape)
+            shape_qr === nothing && continue
+            element = Element(shape, shape_qr)
             V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
             @test V ≈ get_volume(shape)
         end
