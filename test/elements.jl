@@ -22,7 +22,7 @@ highorder(::Tet10) = nothing
 
 @testset "Element" begin
     @testset "interpolate" begin
-        @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
+        @testset "$shape" for shape in allshapes()
             for T in (Float64, Float32)
                 TOL = sqrt(eps(T))
                 dim = Femto.get_dimension(shape)
@@ -51,7 +51,7 @@ highorder(::Tet10) = nothing
         end
     end
     @testset "gauss quadrature" begin
-        @testset "$shape" for shape in map(S->S(), subtypes(Femto.Shape))
+        @testset "$shape" for shape in allshapes()
             element = Element(shape)
             V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
             @test V ≈ get_volume(shape)

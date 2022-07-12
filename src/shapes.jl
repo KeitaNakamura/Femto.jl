@@ -14,6 +14,12 @@ end
     SVector(ntuple(i->A[i,:], Val(N)))
 end
 
+########
+# Line #
+########
+
+abstract type Line <: Shape{1} end
+
 """
     Line2()
 
@@ -26,7 +32,7 @@ end
 1-----+-----2 --> ξ
 ```
 """
-struct Line2 <: Shape{1} end
+struct Line2 <: Line end
 
 @pure num_nodes(::Line2) = 2
 @pure num_quadpoints(::Line2) = 1
@@ -67,7 +73,7 @@ end
 1-----3-----2 --> ξ
 ```
 """
-struct Line3 <: Shape{1} end
+struct Line3 <: Line end
 
 @pure num_nodes(::Line3) = 3
 @pure num_quadpoints(::Line3) = 2
@@ -100,6 +106,12 @@ function quadweights(::Type{T}, ::Line3) where {T}
     NTuple{2, T}((1, 1))
 end
 
+########
+# Quad #
+########
+
+abstract type Quad <: Shape{2} end
+
 """
     Quad4()
 
@@ -117,7 +129,7 @@ end
 1-----------2
 ```
 """
-struct Quad4 <: Shape{2} end
+struct Quad4 <: Quad end
 
 @pure num_nodes(::Quad4) = 4
 @pure num_quadpoints(::Quad4) = 4
@@ -171,7 +183,7 @@ end
 1-----5-----2
 ```
 """
-struct Quad9 <: Shape{2} end
+struct Quad9 <: Quad end
 
 @pure num_nodes(::Quad9) = 9
 @pure num_quadpoints(::Quad9) = 9
@@ -233,6 +245,12 @@ function quadweights(::Type{T}, ::Quad9) where {T}
     ))
 end
 
+#######
+# Hex #
+#######
+
+abstract type Hex <: Shape{3} end
+
 @doc raw"""
     Hex8()
 
@@ -252,7 +270,7 @@ end
     5----------6
 ```
 """
-struct Hex8 <: Shape{3} end
+struct Hex8 <: Hex end
 
 @pure num_nodes(::Hex8) = 8
 @pure num_quadpoints(::Hex8) = 8
@@ -321,7 +339,7 @@ end
    10----14----11
 ```
 """
-struct Hex27 <: Shape{3} end
+struct Hex27 <: Hex end
 
 @pure num_nodes(::Hex27) = 27
 @pure num_quadpoints(::Hex27) = 27
@@ -455,6 +473,12 @@ function quadweights(::Type{T}, ::Hex27) where {T}
     ))
 end
 
+#######
+# Tri #
+#######
+
+abstract type Tri <: Shape{2} end
+
 @doc raw"""
     Tri3()
 
@@ -472,7 +496,7 @@ end
 1----------2 --> ξ
 ```
 """
-struct Tri3 <: Shape{2} end
+struct Tri3 <: Tri end
 
 @pure num_nodes(::Tri3) = 3
 @pure num_quadpoints(::Tri3) = 1
@@ -516,7 +540,7 @@ end
 1-----4----2 --> ξ
 ```
 """
-struct Tri6 <: Shape{2} end
+struct Tri6 <: Tri end
 
 @pure num_nodes(::Tri6) = 6
 @pure num_quadpoints(::Tri6) = 3
@@ -556,6 +580,12 @@ function quadweights(::Type{T}, ::Tri6) where {T}
     NTuple{3, T}((1/6, 1/6, 1/6))
 end
 
+#######
+# Tet #
+#######
+
+abstract type Tet <: Shape{3} end
+
 @doc raw"""
     Tet4()
 
@@ -581,7 +611,7 @@ end
                    ` ζ
 ```
 """
-struct Tet4 <: Shape{3} end
+struct Tet4 <: Tet end
 
 @pure num_nodes(::Tet4) = 4
 @pure num_quadpoints(::Tet4) = 1
@@ -635,7 +665,7 @@ end
                    ` ζ
 ```
 """
-struct Tet10 <: Shape{3} end
+struct Tet10 <: Tet end
 
 @pure num_nodes(::Tet10) = 10
 @pure num_quadpoints(::Tet10) = 4
