@@ -1,27 +1,28 @@
-abstract type Element{T, dim, shape, num_nodes} end
+abstract type Element{T, dim, shape, shape_qr, num_nodes} end
 
 ###############
 # BodyElement #
 ###############
 
-struct BodyElement{T, dim, S <: Shape{dim}, num_nodes} <: Element{T, dim, S, num_nodes}
+struct BodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, num_nodes} <: Element{T, dim, S, Sqr, num_nodes}
     shape::S
+    shape_qr::Sqr
     N::Vector{SVector{num_nodes, T}}
     dNdx::Vector{SVector{num_nodes, Vec{dim, T}}}
     detJdΩ::Vector{T}
 end
 
-function BodyElement{T}(shape::Shape{dim}) where {T, dim}
-    n = num_quadpoints(shape)
+function BodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
     L = num_nodes(shape)
+    n = num_quadpoints(shape_qr)
     N = zeros(SVector{L, T}, n)
     dNdx = zeros(SVector{L, Vec{dim, T}}, n)
     detJdΩ = zeros(T, n)
-    element = BodyElement(shape, N, dNdx, detJdΩ)
+    element = BodyElement(shape, shape_qr, N, dNdx, detJdΩ)
     update!(element, get_local_node_coordinates(shape))
     element
 end
-BodyElement(shape::Shape) = BodyElement{Float64}(shape)
+BodyElement(shape::Shape, shape_qr::Shape = shape) = BodyElement{Float64}(shape, shape_qr)
 
 function update!(element::BodyElement, xᵢ::AbstractVector{<: Vec})
     @assert num_nodes(element) == length(xᵢ)
@@ -39,25 +40,26 @@ end
 # FaceElement #
 ###############
 
-struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, num_nodes} <: Element{T, dim, S, num_nodes}
+struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{shape_dim}, num_nodes} <: Element{T, dim, S, Sqr, num_nodes}
     shape::S
+    shape_qr::Sqr
     N::Vector{SVector{num_nodes, T}}
     normal::Vector{Vec{dim, T}}
     detJdΩ::Vector{T}
 end
 
-function FaceElement{T}(shape::Shape{shape_dim}) where {T, shape_dim}
+function FaceElement{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, shape_dim}
     dim = shape_dim + 1
-    n = num_quadpoints(shape)
     L = num_nodes(shape)
+    n = num_quadpoints(shape_qr)
     N = zeros(SVector{L, T}, n)
     normal = zeros(Vec{dim, T}, n)
     detJdΩ = zeros(T, n)
-    element = FaceElement(shape, N, normal, detJdΩ)
+    element = FaceElement(shape, shape_qr, N, normal, detJdΩ)
     update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_node_coordinates(shape)))
     element
 end
-FaceElement(shape::Shape) = FaceElement{Float64}(shape)
+FaceElement(shape::Shape, shape_qr::Shape = shape) = FaceElement{Float64}(shape, shape_qr)
 
 get_normal(J::Mat{3,2}) = J[:,1] × J[:,2]
 get_normal(J::Mat{2,1}) = Vec(J[2,1], -J[1,1])
@@ -78,24 +80,25 @@ end
 # Element #
 ###########
 
-Element{T, dim}(shape::Shape{dim}) where {T, dim} = BodyElement{T}(shape)
-Element{T, dim}(shape::Shape{shape_dim}) where {T, dim, shape_dim} = FaceElement{T}(shape)
+Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim}=shape) where {T, dim} = BodyElement{T}(shape, shape_qr)
+Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, dim, shape_dim} = FaceElement{T}(shape, shape_qr)
 
 # use `shape_dim` for `dim` by default
-Element{T}(shape::Shape{shape_dim}) where {T, shape_dim} = Element{T, shape_dim}(shape)
-Element(shape::Shape{shape_dim}) where {shape_dim} = Element{Float64, shape_dim}(shape)
+Element{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, shape_dim} = Element{T, shape_dim}(shape, shape_qr)
+Element(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {shape_dim} = Element{Float64, shape_dim}(shape, shape_qr)
 
 get_shape(elt::Element) = elt.shape
+get_shape_qr(elt::Element) = elt.shape_qr
 get_dimension(elt::Element{<: Any, dim}) where {dim} = dim
 num_nodes(elt::Element) = num_nodes(get_shape(elt))
-num_quadpoints(elt::Element) = num_quadpoints(get_shape(elt))
+num_quadpoints(elt::Element) = num_quadpoints(get_shape_qr(elt))
 num_dofs(::ScalarField, elt::Element) = num_nodes(elt)
 num_dofs(::VectorField, elt::Element) = get_dimension(elt) * num_nodes(elt)
 
 # functions for `Shape`
 get_local_node_coordinates(elt::Element{T}) where {T} = get_local_node_coordinates(T, get_shape(elt))
-quadpoints(elt::Element{T}) where {T} = quadpoints(T, get_shape(elt))
-quadweights(elt::Element{T}) where {T} = quadweights(T, get_shape(elt))
+quadpoints(elt::Element{T}) where {T} = quadpoints(T, get_shape_qr(elt))
+quadweights(elt::Element{T}) where {T} = quadweights(T, get_shape_qr(elt))
 
 dofindices(ftype::FieldType, element::Element, I) = dofindices(ftype, Val(get_dimension(element)), I)
 
@@ -212,7 +215,7 @@ end
 shape_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
 shape_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
 # VectorField
-@generated function shape_values(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
+@generated function shape_values(::VectorField, element::Element{T, dim, <: Any, <: Any, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         vals = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
@@ -226,7 +229,7 @@ shape_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbound
         SVector($(exps...))
     end
 end
-@generated function shape_gradients(::VectorField, element::Element{T, dim, <: Any, L}, qp::Int) where {T, dim, L}
+@generated function shape_gradients(::VectorField, element::Element{T, dim, <: Any, <: Any, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
