@@ -60,27 +60,85 @@ end
 default_shapetype(::Val{1}) = Line2()
 default_shapetype(::Val{2}) = Quad4()
 default_shapetype(::Val{3}) = Hex8()
-function _connectivity(I::CartesianIndex{1})
+
+# first order elements
+function _connectivity(::Line2, I::CartesianIndex{1})
+    CI = CartesianIndex
     i = I[1]
-    (CartesianIndex(i), CartesianIndex(i+1))
+    (CI(i), CI(i+1))
 end
-function _connectivity(I::CartesianIndex{2})
+function _connectivity(::Line3, I::CartesianIndex{1})
+    CI = CartesianIndex
+    i = I[1]
+    (CI(i), CI(i+2), CI(i+1))
+end
+function _connectivity(::Quad4, I::CartesianIndex{2})
+    CI = CartesianIndex
     i, j = I[1], I[2]
-    (CartesianIndex(i,j), CartesianIndex(i+1,j), CartesianIndex(i+1,j+1), CartesianIndex(i,j+1))
+    (CI(i,j), CI(i+1,j), CI(i+1,j+1), CI(i,j+1))
 end
-function _connectivity(I::CartesianIndex{3})
+function _connectivity(::Quad9, I::CartesianIndex{2})
+    CI = CartesianIndex
+    i, j = I[1], I[2]
+    (CI(i,j), CI(i+2,j), CI(i+2,j+2), CI(i,j+2), CI(i+1,j), CI(i+2,j+1), CI(i+1,j+2), CI(i,j+1), CI(i+1,j+1))
+end
+function _connectivity(::Hex8, I::CartesianIndex{3})
+    CI = CartesianIndex
     i, j, k = I[1], I[2], I[3]
-    (CartesianIndex(i,j,k), CartesianIndex(i+1,j,k), CartesianIndex(i+1,j+1,k), CartesianIndex(i,j+1,k),
-     CartesianIndex(i,j,k+1), CartesianIndex(i+1,j,k+1), CartesianIndex(i+1,j+1,k+1), CartesianIndex(i,j+1,k+1))
+    (CI(i,j,k), CI(i+1,j,k), CI(i+1,j+1,k), CI(i,j+1,k), CI(i,j,k+1), CI(i+1,j,k+1), CI(i+1,j+1,k+1), CI(i,j+1,k+1))
+end
+function _connectivity(::Hex27, I::CartesianIndex{3})
+    CI = CartesianIndex
+    i, j, k = I[1], I[2], I[3]
+    (CI(i,j,k), CI(i+2,j,k), CI(i+2,j+2,k), CI(i,j+2,k), CI(i+1,j,k), CI(i+2,j+1,k), CI(i+1,j+2,k), CI(i,j+1,k), CI(i+1,j+1,k),
+     CI(i,j,k+2), CI(i+2,j,k+2), CI(i+2,j+2,k+2), CI(i,j+2,k+2), CI(i+1,j,k+2), CI(i+2,j+1,k+2), CI(i+1,j+2,k+2), CI(i,j+1,k+2), CI(i+1,j+1,k+2),
+     CI(i,j,k+1), CI(i+2,j,k+1), CI(i+2,j+2,k+1), CI(i,j+2,k+1), CI(i+1,j,k+1), CI(i+2,j+1,k+1), CI(i+1,j+2,k+1), CI(i,j+1,k+1), CI(i+1,j+1,k+1))
+end
+
+struct StructuredMesh{dim, Axes <: Tuple{Vararg{AbstractVector, dim}}} <: AbstractArray{Vec{dim, Float64}, dim}
+    axes::Axes
+    order::Int
+end
+Base.size(x::StructuredMesh) = x.order .* (map(length, x.axes) .- 1) .+ 1
+primarysize(x::StructuredMesh) = map(length, x.axes)
+function PrimaryCartesianIndices(x::StructuredMesh{dim}) where {dim}
+    map(CartesianIndex{dim}, Iterators.product(map(ax -> first(ax):x.order:last(ax), axes(x))...))
+end
+@inline function _getindex(x::AbstractVector, i::Int, order::Int)::Float64
+    @_propagate_inbounds_meta
+    i_p, i_l = divrem(i-1, order) # primary and local index
+    i_p += 1
+    if i_l == 0
+        x[i_p]
+    else
+        x[i_p] + i_l * (x[i_p+1] - x[i_p]) / order
+    end
+end
+@inline function Base.getindex(x::StructuredMesh{dim}, I::Vararg{Int, dim}) where {dim}
+    @_propagate_inbounds_meta
+    Vec(broadcast(_getindex, x.axes, I, x.order))
+end
+
+# generate_grid
+function generate_grid(::Type{T}, shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {T, dim}
+    mesh = StructuredMesh(axes, get_order(shape))
+    nodes = vec(collect(Vec{dim, T}, mesh))
+    primaryinds = PrimaryCartesianIndices(mesh)
+    connectivities = map(CartesianIndices(size(primaryinds) .- 1)) do I
+        Index{num_nodes(shape)}(broadcast(getindex, Ref(LinearIndices(mesh)), _connectivity(shape, primaryinds[I])))
+    end
+    Grid(shape, vec(nodes), vec(connectivities))
+end
+function generate_grid(::Type{T}, axes::Vararg{AbstractVector, dim}) where {T, dim}
+    generate_grid(T, default_shapetype(Val(dim)), axes...)
+end
+function generate_grid(shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {dim}
+    Eltype = promote_type(map(eltype, axes)...)
+    generate_grid(ifelse(Eltype==Int, Float64, Eltype), shape, axes...)
 end
 function generate_grid(axes::Vararg{AbstractVector, dim}) where {dim}
-    dims = map(length, axes)
     Eltype = promote_type(map(eltype, axes)...)
-    nodes = map(Vec{dim, ifelse(Eltype==Int, Float64, Eltype)}, Iterators.product(axes...))
-    connectivities = map(oneunit(CartesianIndex{dim}):CartesianIndex(dims .- 1)) do I
-        Index(broadcast(getindex, Ref(LinearIndices(dims)), _connectivity(I)))
-    end
-    Grid(default_shapetype(Val(dim)), vec(nodes), vec(connectivities))
+    generate_grid(default_shapetype(Val(dim)), axes...)
 end
 
 ########################
