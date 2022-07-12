@@ -22,7 +22,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dirichlet = falses(ndofs)
     dirichlet[eachnode(fieldtype, gridset["boundary"])] .= true
 
-    outdir = joinpath(@__DIR__, "Output")
+    outdir = joinpath(dirname(filename), "Output")
     mkpath(outdir)
     pvd = openpvd(joinpath(outdir, "WaveEquation"))
     mesh = Grid{Float64, 3}(grid)

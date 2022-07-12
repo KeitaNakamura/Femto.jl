@@ -15,7 +15,7 @@ function HeatEquation(filename = joinpath(@__DIR__, "model.msh"))
 
     solve!(U, K, F, dirichlet)
 
-    openvtk(joinpath(@__DIR__, "HeatEquation"), grid) do vtk
+    openvtk(joinpath(dirname(filename), "HeatEquation"), grid) do vtk
         vtk["Temperature"] = U
     end
 
