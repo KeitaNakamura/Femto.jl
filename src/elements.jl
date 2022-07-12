@@ -1,14 +1,14 @@
-abstract type Element{T, dim, shape, shape_qr, num_nodes} end
+abstract type Element{T, dim, num_nodes} end
 
 ###############
 # BodyElement #
 ###############
 
-struct BodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, num_nodes} <: Element{T, dim, S, Sqr, num_nodes}
+struct BodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, L} <: Element{T, dim, L}
     shape::S
     shape_qr::Sqr
-    N::Vector{SVector{num_nodes, T}}
-    dNdx::Vector{SVector{num_nodes, Vec{dim, T}}}
+    N::Vector{SVector{L, T}}
+    dNdx::Vector{SVector{L, Vec{dim, T}}}
     detJdΩ::Vector{T}
 end
 
@@ -40,10 +40,10 @@ end
 # FaceElement #
 ###############
 
-struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{shape_dim}, num_nodes} <: Element{T, dim, S, Sqr, num_nodes}
+struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{shape_dim}, L} <: Element{T, dim, L}
     shape::S
     shape_qr::Sqr
-    N::Vector{SVector{num_nodes, T}}
+    N::Vector{SVector{L, T}}
     normal::Vector{Vec{dim, T}}
     detJdΩ::Vector{T}
 end
@@ -215,7 +215,7 @@ end
 shape_values(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.N[qp])
 shape_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbounds_meta; element.dNdx[qp])
 # VectorField
-@generated function shape_values(::VectorField, element::Element{T, dim, <: Any, <: Any, L}, qp::Int) where {T, dim, L}
+@generated function shape_values(::VectorField, element::Element{T, dim, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         vals = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
@@ -229,7 +229,7 @@ shape_gradients(::ScalarField, element::Element, qp::Int) = (@_propagate_inbound
         SVector($(exps...))
     end
 end
-@generated function shape_gradients(::VectorField, element::Element{T, dim, <: Any, <: Any, L}, qp::Int) where {T, dim, L}
+@generated function shape_gradients(::VectorField, element::Element{T, dim, L}, qp::Int) where {T, dim, L}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
