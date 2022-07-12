@@ -34,6 +34,7 @@ abstract type Line <: Shape{1} end
 """
 struct Line2 <: Line end
 
+@pure get_order(::Line2) = 1
 @pure num_nodes(::Line2) = 2
 @pure num_quadpoints(::Line2) = 1
 
@@ -75,6 +76,7 @@ end
 """
 struct Line3 <: Line end
 
+@pure get_order(::Line3) = 2
 @pure num_nodes(::Line3) = 3
 @pure num_quadpoints(::Line3) = 2
 
@@ -131,6 +133,7 @@ abstract type Quad <: Shape{2} end
 """
 struct Quad4 <: Quad end
 
+@pure get_order(::Quad4) = 1
 @pure num_nodes(::Quad4) = 4
 @pure num_quadpoints(::Quad4) = 4
 
@@ -185,6 +188,7 @@ end
 """
 struct Quad9 <: Quad end
 
+@pure get_order(::Quad9) = 2
 @pure num_nodes(::Quad9) = 9
 @pure num_quadpoints(::Quad9) = 9
 
@@ -272,6 +276,7 @@ abstract type Hex <: Shape{3} end
 """
 struct Hex8 <: Hex end
 
+@pure get_order(::Hex8) = 1
 @pure num_nodes(::Hex8) = 8
 @pure num_quadpoints(::Hex8) = 8
 
@@ -341,6 +346,7 @@ end
 """
 struct Hex27 <: Hex end
 
+@pure get_order(::Hex27) = 2
 @pure num_nodes(::Hex27) = 27
 @pure num_quadpoints(::Hex27) = 27
 
@@ -498,6 +504,7 @@ abstract type Tri <: Shape{2} end
 """
 struct Tri3 <: Tri end
 
+@pure get_order(::Tri3) = 1
 @pure num_nodes(::Tri3) = 3
 @pure num_quadpoints(::Tri3) = 1
 
@@ -542,6 +549,7 @@ end
 """
 struct Tri6 <: Tri end
 
+@pure get_order(::Tri6) = 2
 @pure num_nodes(::Tri6) = 6
 @pure num_quadpoints(::Tri6) = 3
 
@@ -613,6 +621,7 @@ abstract type Tet <: Shape{3} end
 """
 struct Tet4 <: Tet end
 
+@pure get_order(::Tet4) = 1
 @pure num_nodes(::Tet4) = 4
 @pure num_quadpoints(::Tet4) = 1
 
@@ -667,6 +676,7 @@ end
 """
 struct Tet10 <: Tet end
 
+@pure get_order(::Tet10) = 2
 @pure num_nodes(::Tet10) = 10
 @pure num_quadpoints(::Tet10) = 4
 
