@@ -16,7 +16,7 @@ import GmshReader
         @test shape == Femto.from_gmsh_shape(prop.elementname)
         @test Femto.get_dimension(shape) == prop.dim
         @test Femto.num_nodes(shape) == prop.numnodes
-        @test Femto.get_local_node_coordinates(shape) == prop.localnodecoord[Femto.from_gmsh_connectivity(shape)]
+        @test Femto.get_local_coordinates(shape) == prop.localnodecoord[Femto.from_gmsh_connectivity(shape)]
         @test Femto.get_order(shape) == prop.order
     end
     @testset "readgmsh" begin

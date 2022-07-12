@@ -27,14 +27,14 @@ highorder(::Tet10) = nothing
                 TOL = sqrt(eps(T))
                 dim = Femto.get_dimension(shape)
                 element = Element{T}(shape)
-                X = @inferred interpolate(VectorField(), element, reinterpret(T, Femto.get_local_node_coordinates(T, shape)))
+                X = @inferred interpolate(VectorField(), element, reinterpret(T, Femto.get_local_coordinates(element)))
                 for qp in Femto.num_quadpoints(element)
                     ## shape values and gradients
                     @test sum(element.N[qp]) ≈ 1
                     @test norm(sum(element.dNdx[qp])) < TOL
                     ## interpolate
                     # qp
-                    x = @inferred interpolate(element, Femto.get_local_node_coordinates(T, shape), qp)
+                    x = @inferred interpolate(element, Femto.get_local_coordinates(element), qp)
                     dxdx = ∇(x)
                     @test x ≈ Femto.quadpoints(T, shape)[qp] atol=TOL
                     @test x ≈ X[qp] atol=TOL
@@ -42,7 +42,7 @@ highorder(::Tet10) = nothing
                     @test dxdx ≈ ∇(X[qp]) atol=TOL
                     # ξ
                     x′ = rand(Vec{dim, T})
-                    x = @inferred interpolate(element, Femto.get_local_node_coordinates(T, shape), x′)
+                    x = @inferred interpolate(element, Femto.get_local_coordinates(element), x′)
                     dxdx = ∇(x)
                     @test x ≈ x′ atol=TOL
                     @test dxdx ≈ one(dxdx) atol=TOL

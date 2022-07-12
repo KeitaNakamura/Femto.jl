@@ -19,7 +19,7 @@ function BodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {
     dNdx = zeros(SVector{L, Vec{dim, T}}, n)
     detJdΩ = zeros(T, n)
     element = BodyElement(shape, shape_qr, N, dNdx, detJdΩ)
-    update!(element, get_local_node_coordinates(shape))
+    update!(element, get_local_coordinates(shape))
     element
 end
 BodyElement(shape::Shape, shape_qr::Shape = shape) = BodyElement{Float64}(shape, shape_qr)
@@ -56,7 +56,7 @@ function FaceElement{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = sh
     normal = zeros(Vec{dim, T}, n)
     detJdΩ = zeros(T, n)
     element = FaceElement(shape, shape_qr, N, normal, detJdΩ)
-    update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_node_coordinates(shape)))
+    update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_coordinates(shape)))
     element
 end
 FaceElement(shape::Shape, shape_qr::Shape = shape) = FaceElement{Float64}(shape, shape_qr)
@@ -96,7 +96,7 @@ num_dofs(::ScalarField, elt::Element) = num_nodes(elt)
 num_dofs(::VectorField, elt::Element) = get_dimension(elt) * num_nodes(elt)
 
 # functions for `Shape`
-get_local_node_coordinates(elt::Element{T}) where {T} = get_local_node_coordinates(T, get_shape(elt))
+get_local_coordinates(elt::Element{T}) where {T} = get_local_coordinates(T, get_shape(elt))
 quadpoints(elt::Element{T}) where {T} = quadpoints(T, get_shape_qr(elt))
 quadweights(elt::Element{T}) where {T} = quadweights(T, get_shape_qr(elt))
 

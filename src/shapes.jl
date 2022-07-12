@@ -1,6 +1,6 @@
 abstract type Shape{dim} end
 
-get_local_node_coordinates(s::Shape) = get_local_node_coordinates(Float64, s)
+get_local_coordinates(s::Shape) = get_local_coordinates(Float64, s)
 get_dimension(s::Shape{dim}) where {dim} = dim
 quadpoints(s::Shape) = quadpoints(Float64, s)
 quadweights(s::Shape) = quadweights(Float64, s)
@@ -38,7 +38,7 @@ struct Line2 <: Line end
 @pure num_nodes(::Line2) = 2
 @pure num_quadpoints(::Line2) = 1
 
-function get_local_node_coordinates(::Type{T}, ::Line2) where {T}
+function get_local_coordinates(::Type{T}, ::Line2) where {T}
     SVector{2, Vec{1, T}}(
         (-1.0,),
         ( 1.0,),
@@ -80,7 +80,7 @@ struct Line3 <: Line end
 @pure num_nodes(::Line3) = 3
 @pure num_quadpoints(::Line3) = 2
 
-function get_local_node_coordinates(::Type{T}, ::Line3) where {T}
+function get_local_coordinates(::Type{T}, ::Line3) where {T}
     SVector{3, Vec{1, T}}(
         (-1.0,),
         ( 1.0,),
@@ -137,7 +137,7 @@ struct Quad4 <: Quad end
 @pure num_nodes(::Quad4) = 4
 @pure num_quadpoints(::Quad4) = 4
 
-function get_local_node_coordinates(::Type{T}, ::Quad4) where {T}
+function get_local_coordinates(::Type{T}, ::Quad4) where {T}
     SVector{4, Vec{2, T}}(
         (-1.0, -1.0),
         ( 1.0, -1.0),
@@ -192,7 +192,7 @@ struct Quad9 <: Quad end
 @pure num_nodes(::Quad9) = 9
 @pure num_quadpoints(::Quad9) = 9
 
-function get_local_node_coordinates(::Type{T}, ::Quad9) where {T}
+function get_local_coordinates(::Type{T}, ::Quad9) where {T}
     SVector{9, Vec{2, T}}(
         (-1.0, -1.0),
         ( 1.0, -1.0),
@@ -280,7 +280,7 @@ struct Hex8 <: Hex end
 @pure num_nodes(::Hex8) = 8
 @pure num_quadpoints(::Hex8) = 8
 
-function get_local_node_coordinates(::Type{T}, ::Hex8) where {T}
+function get_local_coordinates(::Type{T}, ::Hex8) where {T}
     SVector{8, Vec{3, T}}(
         (-1.0, -1.0, -1.0),
         ( 1.0, -1.0, -1.0),
@@ -350,7 +350,7 @@ struct Hex27 <: Hex end
 @pure num_nodes(::Hex27) = 27
 @pure num_quadpoints(::Hex27) = 27
 
-function get_local_node_coordinates(::Type{T}, ::Hex27) where {T}
+function get_local_coordinates(::Type{T}, ::Hex27) where {T}
     SVector{27, Vec{3, T}}(
         (-1.0, -1.0, -1.0),
         ( 1.0, -1.0, -1.0),
@@ -508,7 +508,7 @@ struct Tri3 <: Tri end
 @pure num_nodes(::Tri3) = 3
 @pure num_quadpoints(::Tri3) = 1
 
-function get_local_node_coordinates(::Type{T}, ::Tri3) where {T}
+function get_local_coordinates(::Type{T}, ::Tri3) where {T}
     SVector{3, Vec{2, T}}(
         (0.0, 0.0),
         (1.0, 0.0),
@@ -553,7 +553,7 @@ struct Tri6 <: Tri end
 @pure num_nodes(::Tri6) = 6
 @pure num_quadpoints(::Tri6) = 3
 
-function get_local_node_coordinates(::Type{T}, ::Tri6) where {T}
+function get_local_coordinates(::Type{T}, ::Tri6) where {T}
     SVector{6, Vec{2, T}}(
         (0.0, 0.0),
         (1.0, 0.0),
@@ -625,7 +625,7 @@ struct Tet4 <: Tet end
 @pure num_nodes(::Tet4) = 4
 @pure num_quadpoints(::Tet4) = 1
 
-function get_local_node_coordinates(::Type{T}, ::Tet4) where {T}
+function get_local_coordinates(::Type{T}, ::Tet4) where {T}
     SVector{4, Vec{3, T}}(
         (0.0, 0.0, 0.0),
         (1.0, 0.0, 0.0),
@@ -680,7 +680,7 @@ struct Tet10 <: Tet end
 @pure num_nodes(::Tet10) = 10
 @pure num_quadpoints(::Tet10) = 4
 
-function get_local_node_coordinates(::Type{T}, ::Tet10) where {T}
+function get_local_coordinates(::Type{T}, ::Tet10) where {T}
     SVector{10, Vec{3, T}}(
         (0.0, 0.0, 0.0),
         (1.0, 0.0, 0.0),
