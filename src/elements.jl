@@ -171,20 +171,16 @@ function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::F
 end
 
 # infer_integeltype
-@pure function infer_integeltype(T_f::Type, T_arraytype::Type, T_fieldtype::Type, T_element::Type)
-    T = eltype(Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int}))
-    if T == Any
-        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
-    end
-    T
+@pure function infer_integtype(T_f::Type, T_arraytype::Type, T_fieldtype::Type, T_element::Type)
+    Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int})
 end
 function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element)
-    T = infer_integeltype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
-    if T == Union{}
-        first(build_element(f, arrtype, ftype, elt, 1)) # run to throw error
-        error("unreachable")
+    T = infer_integtype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
+    if T == Union{} || T == Any
+        first(build_element(f, arrtype, ftype, elt, 1)) # try run for error case
+        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
-    T
+    eltype(T)
 end
 
 # integrate!
