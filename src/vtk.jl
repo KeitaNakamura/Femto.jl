@@ -1,11 +1,5 @@
 using WriteVTK
 
-export
-    openvtk,
-    openpvd,
-    closevtk,
-    closepvd
-
 to_vtk_celltype(::Line2) = VTKCellTypes.VTK_LINE
 to_vtk_celltype(::Line3) = VTKCellTypes.VTK_QUADRATIC_EDGE
 to_vtk_celltype(::Tri3)  = VTKCellTypes.VTK_TRIANGLE

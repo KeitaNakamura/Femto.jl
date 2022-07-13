@@ -51,8 +51,6 @@ export
     get_allnodes,
     eachnode,
     eachelement,
-    create_globalvector,
-    create_globalmatrix,
     integrate!,
     generate_grid,
     generate_gridset,
@@ -60,7 +58,12 @@ export
     # solve
     solve!,
     # gmsh
-    readgmsh
+    readgmsh,
+    # vtk
+    openvtk,
+    openpvd,
+    closevtk,
+    closepvd
 
 const Index{L} = SVector{L, Int}
 
