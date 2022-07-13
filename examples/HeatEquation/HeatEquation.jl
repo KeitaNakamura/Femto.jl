@@ -1,8 +1,9 @@
 using Femto
 
 function HeatEquation(filename = joinpath(@__DIR__, "model.msh"))
-    gridset = readgmsh(filename)
-
+    HeatEquation(readgmsh(filename), dirname(filename))
+end
+function HeatEquation(gridset::Dict, dir::String = @__DIR__)
     grid = gridset["main"]
     fieldtype = ScalarField()
 
@@ -15,7 +16,7 @@ function HeatEquation(filename = joinpath(@__DIR__, "model.msh"))
 
     solve!(U, K, F, dirichlet)
 
-    openvtk(joinpath(dirname(filename), "HeatEquation"), grid) do vtk
+    openvtk(joinpath(dir, "HeatEquation"), grid) do vtk
         vtk["Temperature"] = U
     end
 
