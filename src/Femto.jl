@@ -55,6 +55,7 @@ export
     create_globalmatrix,
     integrate!,
     generate_grid,
+    generate_gridset,
     generate_elementstate,
     # solve
     solve!,

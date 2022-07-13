@@ -46,6 +46,26 @@
         @test grid.connectivities == [[1,2,5,4,10,11,14,13], [2,3,6,5,11,12,15,14], [4,5,8,7,13,14,17,16], [5,6,9,8,14,15,18,17],
                                       [10,11,14,13,19,20,23,22], [11,12,15,14,20,21,24,23], [13,14,17,16,22,23,26,25], [14,15,18,17,23,24,27,26]]
     end
+    @testset "generate_gridset" begin
+        a = rand()
+        f(i,v,n) = a * v * n
+        for shape in (Quad4(), Quad9())
+            gridset = generate_gridset(0:2, 0:3) # 2, 3
+            @test sum(integrate(f, ScalarField(), gridset["left"])) ≈ [-3a, 0]
+            @test sum(integrate(f, ScalarField(), gridset["right"])) ≈ [3a, 0]
+            @test sum(integrate(f, ScalarField(), gridset["bottom"])) ≈ [0, -2a]
+            @test sum(integrate(f, ScalarField(), gridset["top"])) ≈ [0, 2a]
+        end
+        for shape in (Hex8(), Hex27())
+            gridset = generate_gridset(0:2, 0:3, -2:3) # 2, 3, 5
+            @test sum(integrate(f, ScalarField(), gridset["left"])) ≈ [-15a, 0, 0]
+            @test sum(integrate(f, ScalarField(), gridset["right"])) ≈ [15a, 0, 0]
+            @test sum(integrate(f, ScalarField(), gridset["bottom"])) ≈ [0, -10a, 0]
+            @test sum(integrate(f, ScalarField(), gridset["top"])) ≈ [0, 10a, 0]
+            @test sum(integrate(f, ScalarField(), gridset["front"])) ≈ [0, 0, 6a]
+            @test sum(integrate(f, ScalarField(), gridset["back"])) ≈ [0, 0, -6a]
+        end
+    end
     @testset "integrate" begin
         # test with one element
         fieldtype = ScalarField()

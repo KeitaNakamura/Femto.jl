@@ -94,16 +94,19 @@ function _connectivity(::Hex27, I::CartesianIndex{3})
      CI(i,j,k+2), CI(i+2,j,k+2), CI(i+2,j+2,k+2), CI(i,j+2,k+2), CI(i+1,j,k+2), CI(i+2,j+1,k+2), CI(i+1,j+2,k+2), CI(i,j+1,k+2), CI(i+1,j+1,k+2),
      CI(i,j,k+1), CI(i+2,j,k+1), CI(i+2,j+2,k+1), CI(i,j+2,k+1), CI(i+1,j,k+1), CI(i+2,j+1,k+1), CI(i+1,j+2,k+1), CI(i,j+1,k+1), CI(i+1,j+1,k+1))
 end
+function generate_connectivities(shape::Shape, nodeindices::AbstractArray{Int})
+    primaryinds = primaryindices(size(nodeindices), get_order(shape))
+    map(CartesianIndices(size(primaryinds) .- 1)) do I
+        Index(broadcast(getindex, Ref(nodeindices), _connectivity(shape, primaryinds[I])))
+    end |> vec
+end
 
+# helper mesh type
 struct StructuredMesh{dim, Axes <: Tuple{Vararg{AbstractVector, dim}}} <: AbstractArray{Vec{dim, Float64}, dim}
     axes::Axes
     order::Int
 end
 Base.size(x::StructuredMesh) = x.order .* (map(length, x.axes) .- 1) .+ 1
-primarysize(x::StructuredMesh) = map(length, x.axes)
-function PrimaryCartesianIndices(x::StructuredMesh{dim}) where {dim}
-    map(CartesianIndex{dim}, Iterators.product(map(ax -> first(ax):x.order:last(ax), axes(x))...))
-end
 @inline function _getindex(x::AbstractVector, i::Int, order::Int)::Float64
     @_propagate_inbounds_meta
     i_p, i_l = divrem(i-1, order) # primary and local index
@@ -118,27 +121,100 @@ end
     @_propagate_inbounds_meta
     Vec(broadcast(_getindex, x.axes, I, x.order))
 end
+function primaryindices(dims::Dims{dim}, order::Int) where {dim}
+    map(CartesianIndex{dim}, Iterators.product(map(l -> 1:order:l, dims)...))
+end
 
 # generate_grid
-function generate_grid(::Type{T}, shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {T, dim}
+grid_args(::Type{T}, shape::Shape, axes::AbstractVector...) where {T} = (T, shape, axes...)
+grid_args(::Type{T}, axes::Vararg{AbstractVector, dim}) where {T, dim} = grid_args(T, default_shapetype(Val(dim)), axes...)
+grid_args(shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {dim} = (T = promote_type(map(eltype, axes)...); grid_args(ifelse(T==Int, Float64, T), shape, axes...))
+grid_args(axes::Vararg{AbstractVector, dim}) where {dim} = grid_args(default_shapetype(Val(dim)), axes...)
+
+generate_grid(args...) = _generate_grid(grid_args(args...)...)
+function _generate_grid(::Type{T}, shape::Shape{shape_dim}, axes::Vararg{AbstractVector, dim}) where {T, dim, shape_dim}
     mesh = StructuredMesh(axes, get_order(shape))
-    nodes = vec(collect(Vec{dim, T}, mesh))
-    primaryinds = PrimaryCartesianIndices(mesh)
-    connectivities = map(CartesianIndices(size(primaryinds) .- 1)) do I
-        Index{num_nodes(shape)}(broadcast(getindex, Ref(LinearIndices(mesh)), _connectivity(shape, primaryinds[I])))
-    end
-    Grid(shape, vec(nodes), vec(connectivities))
+    connectivities = generate_connectivities(shape, LinearIndices(mesh))
+    Grid(shape, vec(collect(Vec{dim, T}, mesh)), connectivities)
 end
-function generate_grid(::Type{T}, axes::Vararg{AbstractVector, dim}) where {T, dim}
-    generate_grid(T, default_shapetype(Val(dim)), axes...)
+
+####################
+# generate_gridset #
+####################
+
+boundshape(::Quad4) = Line2()
+boundshape(::Quad9) = Line3()
+boundshape(::Hex8) = Quad4()
+boundshape(::Hex27) = Quad9()
+
+generate_gridset(args...) = _generate_gridset(grid_args(args...)...)
+function _generate_gridset(::Type{T}, shape::Shape{2}, axes::Vararg{AbstractVector, 2}) where {T}
+    bshape = boundshape(shape)
+    order = get_order(shape)
+    mesh = StructuredMesh(axes, order)
+    nodeinds = LinearIndices(mesh)
+
+    # nodeinds
+    nodeinds_left = nodeinds[1,end:-1:1]
+    nodeinds_right = nodeinds[end,1:end]
+    nodeinds_bottom = nodeinds[1:end,1]
+    nodeinds_top = nodeinds[end:-1:1,end]
+    nodeinds_boundary = [nodeinds_left; nodeinds_right; nodeinds_bottom; nodeinds_top]
+
+    # connectivities
+    main = generate_connectivities(shape, nodeinds)
+    left = generate_connectivities(bshape, nodeinds_left)
+    right = generate_connectivities(bshape, nodeinds_right)
+    bottom = generate_connectivities(bshape, nodeinds_bottom)
+    top = generate_connectivities(bshape, nodeinds_top)
+    boundary = [left; right; bottom; top]
+    boundary = mapreduce(vec, vcat, (left, right, bottom, top))
+
+    allnodes = vec(collect(Vec{2, T}, mesh))
+    Dict{String, Grid{T, 2}}(
+        "main"   => Grid(shape, allnodes, main),
+        "left"   => Grid(bshape, allnodes, left, sort!(nodeinds_left)),
+        "right"  => Grid(bshape, allnodes, right, sort!(nodeinds_right)),
+        "bottom" => Grid(bshape, allnodes, bottom, sort!(nodeinds_bottom)),
+        "top"    => Grid(bshape, allnodes, top, sort!(nodeinds_top)),
+        "boundary" => Grid(bshape, allnodes, boundary, sort!(nodeinds_boundary))
+    )
 end
-function generate_grid(shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {dim}
-    Eltype = promote_type(map(eltype, axes)...)
-    generate_grid(ifelse(Eltype==Int, Float64, Eltype), shape, axes...)
-end
-function generate_grid(axes::Vararg{AbstractVector, dim}) where {dim}
-    Eltype = promote_type(map(eltype, axes)...)
-    generate_grid(default_shapetype(Val(dim)), axes...)
+function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVector, 3}) where {T}
+    bshape = boundshape(shape)
+    mesh = StructuredMesh(axes, get_order(shape))
+    nodeinds = LinearIndices(mesh)
+
+    # nodeinds
+    nodeinds_left   = nodeinds[1,        1:end, 1:end   ] |> permutedims
+    nodeinds_right  = nodeinds[end,      1:end, end:-1:1] |> permutedims
+    nodeinds_bottom = nodeinds[1:end,    1,     1:end   ]
+    nodeinds_top    = nodeinds[1:end,    end,   end:-1:1]
+    nodeinds_front  = nodeinds[1:end,    1:end, end     ]
+    nodeinds_back   = nodeinds[end:-1:1, 1:end, 1       ]
+    nodeinds_boundary = mapreduce(vec, vcat, (nodeinds_left, nodeinds_right, nodeinds_bottom, nodeinds_top, nodeinds_front, nodeinds_back))
+
+    # connectivities
+    main = generate_connectivities(shape, nodeinds)
+    left = generate_connectivities(bshape, nodeinds_left)
+    right = generate_connectivities(bshape, nodeinds_right)
+    bottom = generate_connectivities(bshape, nodeinds_bottom)
+    top = generate_connectivities(bshape, nodeinds_top)
+    front = generate_connectivities(bshape, nodeinds_front)
+    back = generate_connectivities(bshape, nodeinds_back)
+    boundary = [left; right; bottom; top; front; back]
+
+    allnodes = vec(collect(Vec{3, T}, mesh))
+    Dict{String, Grid{T, 3}}(
+        "main"   => Grid(shape, allnodes, main),
+        "left"   => Grid(bshape, allnodes, left, sort!(vec(nodeinds_left))),
+        "right"  => Grid(bshape, allnodes, right, sort!(vec(nodeinds_right))),
+        "bottom" => Grid(bshape, allnodes, bottom, sort!(vec(nodeinds_bottom))),
+        "top"    => Grid(bshape, allnodes, top, sort!(vec(nodeinds_top))),
+        "front"  => Grid(bshape, allnodes, front, sort!(vec(nodeinds_front))),
+        "back"   => Grid(bshape, allnodes, back, sort!(vec(nodeinds_back))),
+        "boundary" => Grid(bshape, allnodes, boundary, sort!(vec(nodeinds_boundary)))
+    )
 end
 
 ########################
