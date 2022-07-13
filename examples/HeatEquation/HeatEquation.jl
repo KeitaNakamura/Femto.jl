@@ -3,6 +3,7 @@ using Femto
 function HeatEquation(filename = joinpath(@__DIR__, "model.msh"))
     HeatEquation(readgmsh(filename), dirname(filename))
 end
+
 function HeatEquation(gridset::Dict, dir::String = @__DIR__)
     grid = gridset["main"]
     fieldtype = ScalarField()
