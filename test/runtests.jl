@@ -1,6 +1,8 @@
 using Femto
 using Test
+using Random
 
+using SparseArrays
 using StaticArrays
 
 function allshapes()
@@ -23,6 +25,7 @@ include("utils.jl")
 include("shapes.jl")
 include("elements.jl")
 include("grid.jl")
+include("solve.jl")
 
 include("gmsh.jl")
 
