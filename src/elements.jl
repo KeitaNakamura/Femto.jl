@@ -1,4 +1,15 @@
+###########
+# Element #
+###########
+
 abstract type Element{T, dim} end
+
+Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim}=shape) where {T, dim} = BodyElement{T}(shape, shape_qr)
+Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, dim, shape_dim} = FaceElement{T}(shape, shape_qr)
+
+# use `shape_dim` for `dim` by default
+Element{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, shape_dim} = Element{T, shape_dim}(shape, shape_qr)
+Element(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {shape_dim} = Element{Float64, shape_dim}(shape, shape_qr)
 
 ###############
 # BodyElement #
@@ -76,31 +87,26 @@ function update!(element::FaceElement, xᵢ::AbstractVector{<: Vec})
     element
 end
 
-###########
-# Element #
-###########
+#################
+# SingleElement #
+#################
 
-Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim}=shape) where {T, dim} = BodyElement{T}(shape, shape_qr)
-Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, dim, shape_dim} = FaceElement{T}(shape, shape_qr)
+const SingleElement{dim, T} = Union{BodyElement{dim, T}, FaceElement{dim, T}}
 
-# use `shape_dim` for `dim` by default
-Element{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, shape_dim} = Element{T, shape_dim}(shape, shape_qr)
-Element(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {shape_dim} = Element{Float64, shape_dim}(shape, shape_qr)
-
-get_shape(elt::Element) = elt.shape
-get_shape_qr(elt::Element) = elt.shape_qr
-get_dimension(elt::Element{<: Any, dim}) where {dim} = dim
-num_nodes(elt::Element) = num_nodes(get_shape(elt))
-num_quadpoints(elt::Element) = num_quadpoints(get_shape_qr(elt))
-num_dofs(::ScalarField, elt::Element) = num_nodes(elt)
-num_dofs(::VectorField, elt::Element) = get_dimension(elt) * num_nodes(elt)
+get_shape(elt::SingleElement) = elt.shape
+get_shape_qr(elt::SingleElement) = elt.shape_qr
+get_dimension(elt::SingleElement{<: Any, dim}) where {dim} = dim
+num_nodes(elt::SingleElement) = num_nodes(get_shape(elt))
+num_quadpoints(elt::SingleElement) = num_quadpoints(get_shape_qr(elt))
+num_dofs(::ScalarField, elt::SingleElement) = num_nodes(elt)
+num_dofs(::VectorField, elt::SingleElement) = get_dimension(elt) * num_nodes(elt)
 
 # functions for `Shape`
-get_local_coordinates(elt::Element{T}) where {T} = get_local_coordinates(T, get_shape(elt))
-quadpoints(elt::Element{T}) where {T} = quadpoints(T, get_shape_qr(elt))
-quadweights(elt::Element{T}) where {T} = quadweights(T, get_shape_qr(elt))
+get_local_coordinates(elt::SingleElement{T}) where {T} = get_local_coordinates(T, get_shape(elt))
+quadpoints(elt::SingleElement{T}) where {T} = quadpoints(T, get_shape_qr(elt))
+quadweights(elt::SingleElement{T}) where {T} = quadweights(T, get_shape_qr(elt))
 
-dofindices(ftype::FieldType, element::Element, I) = dofindices(ftype, Val(get_dimension(element)), I)
+dofindices(ftype::FieldType, element::SingleElement, I) = dofindices(ftype, Val(get_dimension(element)), I)
 
 ###############
 # interpolate #
@@ -109,7 +115,7 @@ dofindices(ftype::FieldType, element::Element, I) = dofindices(ftype, Val(get_di
 _otimes(x, y) = x * y
 _otimes(x::Tensor, y::Tensor) = x ⊗ y
 
-function interpolate(element::Element, uᵢ::AbstractVector, qp::Int)
+function interpolate(element::SingleElement, uᵢ::AbstractVector, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         N, dNdx = element.N[qp], element.dNdx[qp]
@@ -119,7 +125,7 @@ function interpolate(element::Element, uᵢ::AbstractVector, qp::Int)
     dual(u, dudx)
 end
 
-function interpolate(element::Element, uᵢ::AbstractVector, ξ::Vec)
+function interpolate(element::SingleElement, uᵢ::AbstractVector, ξ::Vec)
     N, dNdx = values_gradients(get_shape(element), ξ)
     u = mapreduce(_otimes, +, uᵢ, N)
     dudx = mapreduce(_otimes, +, uᵢ, dNdx)
@@ -127,15 +133,15 @@ function interpolate(element::Element, uᵢ::AbstractVector, ξ::Vec)
 end
 
 # interpolate `uᵢ` at all quadrature points
-function interpolate(element::Element, uᵢ::AbstractVector)
+function interpolate(element::SingleElement, uᵢ::AbstractVector)
     @assert num_nodes(element) == length(uᵢ)
     mappedarray(1:num_quadpoints(element)) do qp
         @inbounds interpolate(element, uᵢ, qp)
     end
 end
 
-interpolate(::ScalarField, element::Element, uᵢ::AbstractVector{<: Real}, args...) = interpolate(element, uᵢ, args...)
-interpolate(::VectorField, element::Element{T, dim}, uᵢ::AbstractVector{<: Real}, args...) where {T, dim} = interpolate(element, reinterpret(Vec{dim, T}, uᵢ), args...)
+interpolate(::ScalarField, element::SingleElement, uᵢ::AbstractVector{<: Real}, args...) = interpolate(element, uᵢ, args...)
+interpolate(::VectorField, element::SingleElement{T, dim}, uᵢ::AbstractVector{<: Real}, args...) where {T, dim} = interpolate(element, reinterpret(Vec{dim, T}, uᵢ), args...)
 
 #############
 # integrate #
@@ -147,7 +153,7 @@ end
 const ElementMatrix = ElementArrayType{Matrix}
 const ElementVector = ElementArrayType{Vector}
 
-ElementArrayType(f, element::Element) = ElementArrayType(f, typeof(element))
+ElementArrayType(f, element::SingleElement) = ElementArrayType(f, typeof(element))
 @pure function ElementArrayType(f, ::Type{<: BodyElement})
     nargs = first(methods(f)).nargs - 1
     nargs == 2 && return ElementVector()
@@ -161,11 +167,11 @@ end
 end
 
 # create_elementmatrix/create_elementvector
-function create_elementarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, element::Element) where {T}
+function create_elementarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, element::SingleElement) where {T}
     n = num_dofs(fieldtype, element)
     zeros(T, n, n)
 end
-function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, element::Element) where {T}
+function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, element::SingleElement) where {T}
     n = num_dofs(fieldtype, element)
     zeros(T, n)
 end
@@ -174,7 +180,7 @@ end
 @pure function infer_integtype(T_f::Type, T_arraytype::Type, T_fieldtype::Type, T_element::Type)
     Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int})
 end
-function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::Element)
+function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::SingleElement)
     T = infer_integtype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
     if T == Union{} || T == Any
         first(build_element(f, arrtype, ftype, elt, 1)) # try run for error case
@@ -184,7 +190,7 @@ function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::
 end
 
 # integrate!
-@inline function integrate!(f, A::AbstractArray, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+@inline function integrate!(f, A::AbstractArray, arraytype::ElementArrayType, fieldtype::FieldType, element::SingleElement)
     @inbounds for qp in 1:num_quadpoints(element)
         B = build_element(f, arraytype, fieldtype, element, qp)
         @simd for I in eachindex(A, B)
@@ -193,15 +199,15 @@ end
     end
     A
 end
-@inline integrate!(f, A::AbstractArray, fieldtype::FieldType, element::Element) = integrate!(f, A, ElementArrayType(f, element), fieldtype, element)
+@inline integrate!(f, A::AbstractArray, fieldtype::FieldType, element::SingleElement) = integrate!(f, A, ElementArrayType(f, element), fieldtype, element)
 
 # integrate
-@inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::Element)
+@inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::SingleElement)
     T = infer_integeltype(f, arraytype, fieldtype, element)
     A = create_elementarray(T, arraytype, fieldtype, element)
     integrate!(f, A, arraytype, fieldtype, element)
 end
-@inline integrate(f, fieldtype::FieldType, element::Element) = integrate(f, ElementArrayType(f, element), fieldtype, element)
+@inline integrate(f, fieldtype::FieldType, element::SingleElement) = integrate(f, ElementArrayType(f, element), fieldtype, element)
 
 ##############################
 # shape values and gradients #
@@ -236,8 +242,8 @@ end
     end
 end
 
-shape_values(ft::FieldType, element::Element, qp::Int) = (@_propagate_inbounds_meta; _shape_values(ft, Val(get_dimension(element)), element.N[qp]))
-shape_gradients(ft::FieldType, element::Element, qp::Int) = (@_propagate_inbounds_meta; _shape_gradients(ft, Val(get_dimension(element)), element.dNdx[qp]))
+shape_values(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_values(ft, Val(get_dimension(element)), element.N[qp]))
+shape_gradients(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_gradients(ft, Val(get_dimension(element)), element.dNdx[qp]))
 
 #################
 # build_element #
@@ -245,7 +251,7 @@ shape_gradients(ft::FieldType, element::Element, qp::Int) = (@_propagate_inbound
 
 ## build element matrix and vector
 # BodyElement
-@inline function build_element(f, ::ElementArrayType{VectorOrMatrix}, fieldtype::FieldType, element::Element, qp::Int) where {VectorOrMatrix}
+@inline function build_element(f, ::ElementArrayType{VectorOrMatrix}, fieldtype::FieldType, element::BodyElement, qp::Int) where {VectorOrMatrix}
     @_propagate_inbounds_meta
     N = shape_values(fieldtype, element, qp)
     dNdx = shape_gradients(fieldtype, element, qp)
