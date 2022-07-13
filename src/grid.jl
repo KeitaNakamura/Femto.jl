@@ -254,12 +254,12 @@ create_globalarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, 
 ## infer_integeltype
 function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    T = infer_integeltype(typeof(f′), typeof(arrtype), typeof(ftype), get_elementtype(grid))
-    if T == Union{}
-        first(build_element(f′, arrtype, ftype, create_element(grid), 1)) # run to throw error
-        error("unreachable")
+    T = infer_integtype(typeof(f′), typeof(arrtype), typeof(ftype), get_elementtype(grid))
+    if T == Union{} || T == Any
+        first(build_element(f′, arrtype, ftype, create_element(grid), 1)) # try run for error case
+        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
-    T
+    eltype(T)
 end
 
 ## integrate!
