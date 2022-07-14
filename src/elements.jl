@@ -172,32 +172,28 @@ function infer_integeltype(f, element::Element, args...)
 end
 
 # integrate!
-@inline function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::SingleElement)
+function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::SingleElement)
     @inbounds for qp in 1:num_quadpoints(element)
         B = build_element(f, ft1, ft2, element, qp)
-        @simd for I in eachindex(A, B)
-            A[I] += B[I]
-        end
+        @. A += B
     end
     A
 end
-@inline function integrate!(f, A::AbstractVector, ft::FieldType, element::SingleElement)
+function integrate!(f, A::AbstractVector, ft::FieldType, element::SingleElement)
     @inbounds for qp in 1:num_quadpoints(element)
         B = build_element(f, ft, element, qp)
-        @simd for I in eachindex(A, B)
-            A[I] += B[I]
-        end
+        @. A += B
     end
     A
 end
 
 # integrate
-@inline function integrate(f, ft1::FieldType, ft2::FieldType, element::SingleElement)
+function integrate(f, ft1::FieldType, ft2::FieldType, element::SingleElement)
     T = infer_integeltype(f, element, ft1, ft2)
     A = create_elementmatrix(T, ft1, ft2, element)
     integrate!(f, A, ft1, ft2, element)
 end
-@inline function integrate(f, ft::FieldType, element::SingleElement)
+function integrate(f, ft::FieldType, element::SingleElement)
     T = infer_integeltype(f, element, ft)
     A = create_elementvector(T, ft, element)
     integrate!(f, A, ft, element)
@@ -274,22 +270,21 @@ end
 end
 
 # helpers
-@inline function build_bodyelement_matrix(f, qp, v::SVector, u::SVector, detJdΩ)
-    mappedarray(CartesianIndices((length(v), length(u)))) do I
+function build_bodyelement_matrix(f, qp, v::SVector, u::SVector, detJdΩ)
+    broadcast(1:length(v), (1:length(u))') do i, j
         @_inline_meta
-        i, j = Tuple(I)
         f(qp, v[i], u[j]) * detJdΩ
     end
 end
-@inline function build_bodyelement_vector(f, qp, v::SVector, detJdΩ)
-    mappedarray(v) do vi
+function build_bodyelement_vector(f, qp, v::SVector, detJdΩ)
+    broadcast(1:length(v)) do i
         @_inline_meta
-        f(qp, vi) * detJdΩ
+        f(qp, v[i]) * detJdΩ
     end
 end
-@inline function build_faceelement_vector(f, qp, normal, v::SVector, detJdΩ)
-    mappedarray(v) do vi
+function build_faceelement_vector(f, qp, normal, v::SVector, detJdΩ)
+    broadcast(1:length(v)) do i
         @_inline_meta
-        f(qp, normal, vi) * detJdΩ
+        f(qp, normal, v[i]) * detJdΩ
     end
 end
