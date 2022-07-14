@@ -245,14 +245,13 @@ end
 create_globalvector(ft::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, ft, grid)
 
 ## infer_integeltype
-function infer_integeltype(f, grid::Grid, args...)
+function infer_integeltype(f, ft1::FieldType, ft2::FieldType, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    T = infer_integtype(typeof(f′), map(typeof, args)..., get_elementtype(grid))
-    if T == Union{} || T == Any || eltype(T) == Union{} || eltype(T) == Any
-        first(build_element(f′, args..., create_element(grid), 1)) # try run for error case
-        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
-    end
-    eltype(T)
+    _infer_integeltype(f′, typeof(ft1), typeof(ft2), get_elementtype(grid))
+end
+function infer_integeltype(f, ft::FieldType, grid::Grid)
+    f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
+    _infer_integeltype(f′, typeof(ft), get_elementtype(grid))
 end
 
 ## integrate!
@@ -290,12 +289,12 @@ end
 
 ## integrate
 function integrate(f, ft1::FieldType, ft2::FieldType, grid::Grid)
-    T = infer_integeltype(f, grid, ft1, ft2)
+    T = infer_integeltype(f, ft1, ft2, grid)
     A = create_globalmatrix(T, ft1, ft2, grid)
     integrate!(f, A, ft1, ft2, grid)
 end
 function integrate(f, ft::FieldType, grid::Grid)
-    T = infer_integeltype(f, grid, ft)
+    T = infer_integeltype(f, ft, grid)
     A = create_globalvector(T, ft, grid)
     integrate!(f, A, ft, grid)
 end
