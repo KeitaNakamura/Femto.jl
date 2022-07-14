@@ -218,19 +218,6 @@ end
 
 ## integrate! at each quadrature point
 # BodyElement
-function integrate!(f, A::AbstractMatrix, ft::FT, ::FT, element::BodyElement, qp::Int) where {FT <: FieldType}
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
-    @inbounds begin
-        v = u = shape_duals(ft, element, qp)
-        @assert size(A) == (length(v), length(u))
-        for j in 1:length(u)
-            @simd for i in 1:length(v)
-                A[i,j] += f(qp, v[i], u[j]) * element.detJdΩ[qp]
-            end
-        end
-    end
-    A
-end
 function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::BodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin

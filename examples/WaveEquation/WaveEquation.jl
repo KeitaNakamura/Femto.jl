@@ -11,9 +11,6 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     M = zeros(ndofs)
     F = zeros(ndofs)
 
-    K̃(index,v,u) = ∇(v) ⋅ ∇(u)
-    F̃(index,v) = v
-
     Uₙ = zeros(ndofs)
     Uₙ₋₁ = zeros(ndofs)
     Uₙ₊₁ = zeros(ndofs)
@@ -30,10 +27,10 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
-        integrate!(K̃, K, Sf(), Sf(), grid)
-        integrate!(F̃, M, Sf(), grid)
+        integrate!((i,v,u)->∇(v)⋅∇(u), K, Sf(), Sf(), grid)
+        integrate!((i,v)->v, M, Sf(), grid) # lumped mass matrix
         if t < 0.2
-            integrate!(F̃, F, Sf(), source)
+            integrate!((i,v)->v, F, Sf(), source)
         else
             F .= 0
         end
