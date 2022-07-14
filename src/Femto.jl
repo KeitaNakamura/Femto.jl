@@ -23,6 +23,8 @@ export
     # field
     ScalarField,
     VectorField,
+    Sf,
+    Vf,
     # Element
     Element,
     BodyElement,
@@ -70,6 +72,8 @@ const Index{L} = SVector{L, Int}
 abstract type FieldType end
 struct ScalarField <: FieldType end
 struct VectorField <: FieldType end
+const Sf = ScalarField
+const Vf = VectorField
 
 include("dual.jl")
 include("sparse.jl")

@@ -221,11 +221,6 @@ end
 # integrate/integrate! #
 ########################
 
-const MaybeTuple{T} = Union{T, Tuple{Vararg{T}}}
-
-check_size(A::AbstractVector, n::Int) = @assert length(A) == n
-check_size(A::AbstractMatrix, n::Int) = @assert size(A) == (n, n)
-
 @pure function convert_integrate_function(f, eltindex)
     @inline function f′(qp, args...)
         @_propagate_inbounds_meta
@@ -235,62 +230,75 @@ end
 
 ## creating global matrix and vector
 # matrix
-function create_globalmatrix(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
-    n = num_dofs(fieldtype, grid)
-    sizehint = num_elementdofs(fieldtype, grid)^2 * num_elements(grid)
-    SparseMatrixCOO{T}(n, n; sizehint)
+function create_globalmatrix(::Type{T}, ft1::FieldType, ft2::FieldType, grid::Grid) where {T}
+    m = num_dofs(ft1, grid)
+    n = num_dofs(ft2, grid)
+    sizehint = num_elementdofs(ft1, grid) * num_elementdofs(ft2, grid) * num_elements(grid)
+    SparseMatrixCOO{T}(m, n; sizehint)
 end
-create_globalmatrix(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, fieldtype, grid)
+create_globalmatrix(ft1::FieldType, ft2::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, ft1, ft2, grid)
 # vector
-function create_globalvector(::Type{T}, fieldtype::FieldType, grid::Grid) where {T}
-    n = num_dofs(fieldtype, grid)
+function create_globalvector(::Type{T}, ft::FieldType, grid::Grid) where {T}
+    n = num_dofs(ft, grid)
     zeros(T, n)
 end
-create_globalvector(fieldtype::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, fieldtype, grid)
-# from element array type
-create_globalarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, grid::Grid) where {T} = create_globalmatrix(T, fieldtype, grid)
-create_globalarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, grid::Grid) where {T} = create_globalvector(T, fieldtype, grid)
+create_globalvector(ft::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, ft, grid)
 
 ## infer_integeltype
-function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, grid::Grid)
+function infer_integeltype(f, grid::Grid, args...)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    T = infer_integtype(typeof(f′), typeof(arrtype), typeof(ftype), get_elementtype(grid))
-    if T == Union{} || T == Any
-        first(build_element(f′, arrtype, ftype, create_element(grid), 1)) # try run for error case
+    T = infer_integtype(typeof(f′), map(typeof, args)..., get_elementtype(grid))
+    if T == Union{} || T == Any || eltype(T) == Union{} || eltype(T) == Any
+        first(build_element(f′, args..., create_element(grid), 1)) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     eltype(T)
 end
 
 ## integrate!
-function integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true)
-    @~ check_size(A, num_dofs(fieldtype, grid))
-    zeroinit && @~ fillzero!(A)
+function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
+    @assert size(A) == (num_dofs(ft1, grid), num_dofs(ft2, grid))
+    zeroinit && fillzero!(A)
     element = create_element(grid)
-    Ke = @~ create_elementarray((@~ eltype(A)), arrtype, fieldtype, element)
+    Ke = create_elementmatrix(eltype(A), ft1, ft2, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_allnodes(grid)[conn])
-        f′ = @~ convert_integrate_function(f, eltindex)
-        @~ fillzero!(Ke)
-        @~ integrate!(f′, Ke, arrtype, fieldtype, element)
-        eltdofs = dofindices(fieldtype, grid, conn)
-        @~ add!(A, eltdofs, Ke)
+        f′ = convert_integrate_function(f, eltindex)
+        fillzero!(Ke)
+        integrate!(f′, Ke, ft1, ft2, element)
+        dofs1 = dofindices(ft1, grid, conn)
+        dofs2 = dofindices(ft2, grid, conn)
+        add!(A, dofs1, dofs2, Ke)
     end
     A
 end
-integrate!(f::MaybeTuple{Function}, A::MaybeTuple{AbstractArray}, fieldtype::FieldType, grid::Grid; zeroinit::Bool = true) =
-    integrate!(f, A, (@~ ElementArrayType(f, get_elementtype(grid))), fieldtype, grid; zeroinit)
+function integrate!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
+    @assert length(F) == num_dofs(ft, grid)
+    zeroinit && fillzero!(F)
+    element = create_element(grid)
+    Fe = create_elementvector(eltype(F), ft, element)
+    for (eltindex, conn) in enumerate(get_connectivities(grid))
+        update!(element, get_allnodes(grid)[conn])
+        f′ = convert_integrate_function(f, eltindex)
+        fillzero!(Fe)
+        integrate!(f′, Fe, ft, element)
+        dofs = dofindices(ft, grid, conn)
+        add!(F, dofs, Fe)
+    end
+    F
+end
 
 ## integrate
-@pure map_tupletype(f, ::Type{T}) where {T <: Tuple} = (map(f, T.parameters)...,)
-@pure map_tupletype(f, ::Type{T}) where {T} = f(T)
-function integrate(f::MaybeTuple{Function}, arrtype::MaybeTuple{ElementArrayType}, fieldtype::FieldType, grid::Grid)
-    T = @~ infer_integeltype(f, arrtype, fieldtype, grid)
-    A = @~ create_globalarray(T, arrtype, fieldtype, grid)
-    integrate!(f, A, arrtype, fieldtype, grid)
+function integrate(f, ft1::FieldType, ft2::FieldType, grid::Grid)
+    T = infer_integeltype(f, grid, ft1, ft2)
+    A = create_globalmatrix(T, ft1, ft2, grid)
+    integrate!(f, A, ft1, ft2, grid)
 end
-integrate(f::MaybeTuple{Function}, fieldtype::FieldType, grid::Grid) =
-    integrate(f, (@~ ElementArrayType(f, get_elementtype(grid))), fieldtype, grid)
+function integrate(f, ft::FieldType, grid::Grid)
+    T = infer_integeltype(f, grid, ft)
+    A = create_globalvector(T, ft, grid)
+    integrate!(f, A, ft, grid)
+end
 
 #########################
 # generate_elementstate #
