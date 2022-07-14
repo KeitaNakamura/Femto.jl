@@ -166,6 +166,7 @@ infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
     Tu = eltype(Base._return_type(shape_duals, Tuple{FT2, Elt, Int}))
     ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv, Tu}), T)
     if ElType == Union{} || ElType == Any
+        f(1, zero(Tv), zero(Tu)) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
@@ -174,6 +175,7 @@ end
     Tv = eltype(Base._return_type(shape_duals, Tuple{FT, Elt, Int}))
     ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv}), T)
     if ElType == Union{} || ElType == Any
+        f(1, zero(Tv)) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
@@ -182,6 +184,7 @@ end
     Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
     ElType = _mul_type(Base._return_type(f, Tuple{Int, Vec{dim, T}, Tv}), T)
     if ElType == Union{} || ElType == Any
+        f(1, zero(Vec{dim, T}), zero(Tv)) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
