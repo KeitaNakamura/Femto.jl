@@ -147,13 +147,12 @@ interpolate(::VectorField, element::SingleElement{T, dim}, uᵢ::AbstractVector{
 # integrate #
 #############
 
-# create_elementmatrix/create_elementvector
-function create_elementmatrix(::Type{T}, ft1::FieldType, ft2::FieldType, element::SingleElement) where {T}
+function create_array(::Type{T}, ft1::FieldType, ft2::FieldType, element::SingleElement) where {T}
     m = num_dofs(ft1, element)
     n = num_dofs(ft2, element)
     zeros(T, m, n)
 end
-function create_elementvector(::Type{T}, ft::FieldType, element::SingleElement) where {T}
+function create_array(::Type{T}, ft::FieldType, element::SingleElement) where {T}
     n = num_dofs(ft, element)
     zeros(T, n)
 end
@@ -198,17 +197,7 @@ end
     ElType
 end
 
-## integrate
-function integrate(f, ft1::FieldType, ft2::FieldType, element::SingleElement)
-    T = infer_integeltype(f, ft1, ft2, element)
-    A = create_elementmatrix(T, ft1, ft2, element)
-    integrate!(f, A, ft1, ft2, element)
-end
-function integrate(f, ft::FieldType, element::SingleElement)
-    T = infer_integeltype(f, ft, element)
-    A = create_elementvector(T, ft, element)
-    integrate!(f, A, ft, element)
-end
+## integrate without shape values
 function integrate(f, element::SingleElement)
     T = infer_integeltype(f, element)
     a = zero(T)

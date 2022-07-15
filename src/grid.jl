@@ -228,21 +228,16 @@ end
     end
 end
 
-## creating global matrix and vector
-# matrix
-function create_globalmatrix(::Type{T}, ft1::FieldType, ft2::FieldType, grid::Grid) where {T}
+function create_array(::Type{T}, ft1::FieldType, ft2::FieldType, grid::Grid) where {T}
     m = num_dofs(ft1, grid)
     n = num_dofs(ft2, grid)
     sizehint = num_elementdofs(ft1, grid) * num_elementdofs(ft2, grid) * num_elements(grid)
     SparseMatrixCOO{T}(m, n; sizehint)
 end
-create_globalmatrix(ft1::FieldType, ft2::FieldType, grid::Grid{T}) where {T} = create_globalmatrix(T, ft1, ft2, grid)
-# vector
-function create_globalvector(::Type{T}, ft::FieldType, grid::Grid) where {T}
+function create_array(::Type{T}, ft::FieldType, grid::Grid) where {T}
     n = num_dofs(ft, grid)
     zeros(T, n)
 end
-create_globalvector(ft::FieldType, grid::Grid{T}) where {T} = create_globalvector(T, ft, grid)
 
 ## infer_integeltype
 function infer_integeltype(f, ft1::FieldType, ft2::FieldType, grid::Grid)
@@ -283,7 +278,7 @@ end
 
 ## integrate!
 function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
-    Ke = create_elementmatrix(eltype(A), ft1, ft2, create_element(grid))
+    Ke = create_array(eltype(A), ft1, ft2, create_element(grid))
     integrate_lowered!(A, ft1, ft2, grid; zeroinit) do eltindex, element
         f′ = convert_integrate_function(f, eltindex)
         fillzero!(Ke)
@@ -292,25 +287,13 @@ function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::
     end
 end
 function integrate!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
-    Fe = create_elementvector(eltype(F), ft, create_element(grid))
+    Fe = create_array(eltype(F), ft, create_element(grid))
     integrate_lowered!(F, ft, grid; zeroinit) do eltindex, element
         f′ = convert_integrate_function(f, eltindex)
         fillzero!(Fe)
         integrate!(f′, Fe, ft, element)
         Fe
     end
-end
-
-## integrate
-function integrate(f, ft1::FieldType, ft2::FieldType, grid::Grid)
-    T = infer_integeltype(f, ft1, ft2, grid)
-    A = create_globalmatrix(T, ft1, ft2, grid)
-    integrate!(f, A, ft1, ft2, grid)
-end
-function integrate(f, ft::FieldType, grid::Grid)
-    T = infer_integeltype(f, ft, grid)
-    A = create_globalvector(T, ft, grid)
-    integrate!(f, A, ft, grid)
 end
 
 #########################

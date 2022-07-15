@@ -84,6 +84,12 @@ include("elements.jl")
 include("grid.jl")
 include("solve.jl")
 
+function integrate(f, args...)
+    T = infer_integeltype(f, args...)
+    A = create_array(T, args...)
+    integrate!(f, A, args...)
+end
+
 include("gmsh.jl")
 include("vtk.jl")
 
