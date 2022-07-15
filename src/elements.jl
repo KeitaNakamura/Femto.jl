@@ -122,14 +122,14 @@ function interpolate(element::SingleElement, uᵢ::AbstractVector, qp::Int)
         u = mapreduce(_otimes, +, uᵢ, N)
         dudx = mapreduce(_otimes, +, uᵢ, dNdx)
     end
-    dual(u, dudx)
+    dual_gradient(u, dudx)
 end
 
 function interpolate(element::SingleElement, uᵢ::AbstractVector, ξ::Vec)
     N, dNdx = values_gradients(get_shape(element), ξ)
     u = mapreduce(_otimes, +, uᵢ, N)
     dudx = mapreduce(_otimes, +, uᵢ, dNdx)
-    dual(u, dudx)
+    dual_gradient(u, dudx)
 end
 
 # interpolate `uᵢ` at all quadrature points
@@ -298,7 +298,7 @@ end
 function shape_values(ft::FieldType, element::BodyElement, qp::Int)
     @_propagate_inbounds_meta
     dim = get_dimension(element)
-    map(dual, shape_values(ft, Val(dim), element.N[qp]), shape_gradients(ft, Val(dim), element.dNdx[qp]))
+    map(dual_gradient, shape_values(ft, Val(dim), element.N[qp]), shape_gradients(ft, Val(dim), element.dNdx[qp]))
 end
 function shape_values(ft::FieldType, element::FaceElement, qp::Int)
     @_propagate_inbounds_meta
