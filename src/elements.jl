@@ -189,6 +189,14 @@ end
     end
     ElType
 end
+@pure function _infer_integeltype(f, ::Type{Elt}) where {T, dim, Elt <: Element{T, dim}}
+    ElType = _mul_type(Base._return_type(f, Tuple{Int}), T)
+    if ElType == Union{} || ElType == Any
+        f(1) # try run for error case
+        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
+    end
+    ElType
+end
 
 ## integrate
 function integrate(f, ft1::FieldType, ft2::FieldType, element::SingleElement)
@@ -200,6 +208,14 @@ function integrate(f, ft::FieldType, element::SingleElement)
     T = infer_integeltype(f, ft, element)
     A = create_elementvector(T, ft, element)
     integrate!(f, A, ft, element)
+end
+function integrate(f, element::SingleElement)
+    T = infer_integeltype(f, element)
+    a = zero(T)
+    @inbounds @simd for qp in 1:num_quadpoints(element)
+        a += f(qp) * element.detJdΩ[qp]
+    end
+    a
 end
 
 ## integrate!
