@@ -87,4 +87,7 @@ include("solve.jl")
 include("gmsh.jl")
 include("vtk.jl")
 
+include("precompile.jl")
+_precompile_()
+
 end # module
