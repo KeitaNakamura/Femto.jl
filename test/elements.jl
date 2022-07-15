@@ -53,13 +53,13 @@ highorder(::Tet10) = nothing
     @testset "gauss quadrature" begin
         @testset "$shape" for shape in allshapes()
             element = Element(shape)
-            V = sum(integrate((qp,v,u)->v*u, Sf(), Sf(), element))
+            V = sum(integrate(qp->1, element))
             @test V ≈ get_volume(shape)
             # high order quadrature
             shape_qr = highorder(shape)
             shape_qr === nothing && continue
             element = Element(shape, shape_qr)
-            V = sum(integrate((qp,v,u)->v*u, Sf(), Sf(), element))
+            V = sum(integrate(qp->1, element))
             @test V ≈ get_volume(shape)
         end
     end
