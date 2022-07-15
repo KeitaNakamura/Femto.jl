@@ -5,22 +5,18 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
 
     grid = gridset["main"]
     source = gridset["source"]
-    fieldtype = ScalarField()
 
-    ndofs = num_dofs(fieldtype, grid)
+    ndofs = num_dofs(Sf(), grid)
     K = SparseMatrixCOO(ndofs, ndofs)
     M = zeros(ndofs)
     F = zeros(ndofs)
-
-    K̃(index,u,v) = ∇(v) ⋅ ∇(u)
-    F̃(index,v) = v
 
     Uₙ = zeros(ndofs)
     Uₙ₋₁ = zeros(ndofs)
     Uₙ₊₁ = zeros(ndofs)
 
     dirichlet = falses(ndofs)
-    dirichlet[eachnode(fieldtype, gridset["boundary"])] .= true
+    dirichlet[eachnode(Sf(), gridset["boundary"])] .= true
 
     outdir = joinpath(dirname(filename), "Output")
     mkpath(outdir)
@@ -31,9 +27,10 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
-        integrate!((K̃, F̃), (K, M), fieldtype, grid)
+        integrate!((i,v,u)->∇(v)⋅∇(u), K, Sf(), Sf(), grid)
+        integrate!((i,v)->v, M, Sf(), grid) # lumped mass matrix
         if t < 0.2
-            integrate!(F̃, F, fieldtype, source)
+            integrate!((i,v)->v, F, Sf(), source)
         else
             F .= 0
         end

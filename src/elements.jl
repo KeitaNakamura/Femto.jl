@@ -147,67 +147,115 @@ interpolate(::VectorField, element::SingleElement{T, dim}, uᵢ::AbstractVector{
 # integrate #
 #############
 
-struct ElementArrayType{VectorOrMatrix}
-    ElementArrayType{VectorOrMatrix}() where {VectorOrMatrix} = new{VectorOrMatrix::Union{Type{Vector}, Type{Matrix}}}()
-end
-const ElementMatrix = ElementArrayType{Matrix}
-const ElementVector = ElementArrayType{Vector}
-
-ElementArrayType(f, element::SingleElement) = ElementArrayType(f, typeof(element))
-@pure function ElementArrayType(f, ::Type{<: BodyElement})
-    nargs = first(methods(f)).nargs - 1
-    nargs == 2 && return ElementVector()
-    nargs == 3 && return ElementMatrix()
-    error("wrong number of arguments in `integrate`, use `(index, u, v)` for matrix or `(index, v)` for vector")
-end
-@pure function ElementArrayType(f, ::Type{<: FaceElement})
-    nargs = first(methods(f)).nargs - 1
-    nargs == 3 && return ElementVector()
-    error("wrong number of arguments in `integrate`, use `(index, v, normal)`")
-end
-
 # create_elementmatrix/create_elementvector
-function create_elementarray(::Type{T}, ::ElementArrayType{Matrix}, fieldtype::FieldType, element::SingleElement) where {T}
-    n = num_dofs(fieldtype, element)
-    zeros(T, n, n)
+function create_elementmatrix(::Type{T}, ft1::FieldType, ft2::FieldType, element::SingleElement) where {T}
+    m = num_dofs(ft1, element)
+    n = num_dofs(ft2, element)
+    zeros(T, m, n)
 end
-function create_elementarray(::Type{T}, ::ElementArrayType{Vector}, fieldtype::FieldType, element::SingleElement) where {T}
-    n = num_dofs(fieldtype, element)
+function create_elementvector(::Type{T}, ft::FieldType, element::SingleElement) where {T}
+    n = num_dofs(ft, element)
     zeros(T, n)
 end
 
 # infer_integeltype
-@pure function infer_integtype(T_f::Type, T_arraytype::Type, T_fieldtype::Type, T_element::Type)
-    Base._return_type(build_element, Tuple{T_f, T_arraytype, T_fieldtype, T_element, Int})
-end
-function infer_integeltype(f, arrtype::ElementArrayType, ftype::FieldType, elt::SingleElement)
-    T = infer_integtype(typeof(f), typeof(arrtype), typeof(ftype), typeof(elt))
-    if T == Union{} || T == Any
-        first(build_element(f, arrtype, ftype, elt, 1)) # try run for error case
+infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
+@pure _mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
+@pure function _infer_integeltype(f, ::Type{FT1}, ::Type{FT2}, ::Type{Elt}) where {FT1, FT2, T, Elt <: BodyElement{T}}
+    Tv = eltype(Base._return_type(shape_duals, Tuple{FT1, Elt, Int}))
+    Tu = eltype(Base._return_type(shape_duals, Tuple{FT2, Elt, Int}))
+    ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv, Tu}), T)
+    if ElType == Union{} || ElType == Any
+        f(1, zero(Tv), zero(Tu)) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
-    eltype(T)
+    ElType
+end
+@pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, Elt <: BodyElement{T}}
+    Tv = eltype(Base._return_type(shape_duals, Tuple{FT, Elt, Int}))
+    ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv}), T)
+    if ElType == Union{} || ElType == Any
+        f(1, zero(Tv)) # try run for error case
+        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
+    end
+    ElType
+end
+@pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, dim, Elt <: FaceElement{T, dim}}
+    Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
+    ElType = _mul_type(Base._return_type(f, Tuple{Int, Vec{dim, T}, Tv}), T)
+    if ElType == Union{} || ElType == Any
+        f(1, zero(Vec{dim, T}), zero(Tv)) # try run for error case
+        error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
+    end
+    ElType
 end
 
-# integrate!
-@inline function integrate!(f, A::AbstractArray, arraytype::ElementArrayType, fieldtype::FieldType, element::SingleElement)
-    @inbounds for qp in 1:num_quadpoints(element)
-        B = build_element(f, arraytype, fieldtype, element, qp)
-        @simd for I in eachindex(A, B)
-            A[I] += B[I]
+## integrate
+function integrate(f, ft1::FieldType, ft2::FieldType, element::SingleElement)
+    T = infer_integeltype(f, ft1, ft2, element)
+    A = create_elementmatrix(T, ft1, ft2, element)
+    integrate!(f, A, ft1, ft2, element)
+end
+function integrate(f, ft::FieldType, element::SingleElement)
+    T = infer_integeltype(f, ft, element)
+    A = create_elementvector(T, ft, element)
+    integrate!(f, A, ft, element)
+end
+
+## integrate!
+function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::SingleElement)
+    for qp in 1:num_quadpoints(element)
+        integrate!(f, A, ft1, ft2, element, qp)
+    end
+    A
+end
+function integrate!(f, A::AbstractVector, ft::FieldType, element::SingleElement)
+    for qp in 1:num_quadpoints(element)
+        integrate!(f, A, ft, element, qp)
+    end
+    A
+end
+
+## integrate! at each quadrature point
+# BodyElement
+function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::BodyElement, qp::Int)
+    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds begin
+        v = shape_duals(ft1, element, qp)
+        u = shape_duals(ft2, element, qp)
+        @assert size(A) == (length(v), length(u))
+        for j in 1:length(u)
+            @simd for i in 1:length(v)
+                A[i,j] += f(qp, v[i], u[j]) * element.detJdΩ[qp]
+            end
         end
     end
     A
 end
-@inline integrate!(f, A::AbstractArray, fieldtype::FieldType, element::SingleElement) = integrate!(f, A, ElementArrayType(f, element), fieldtype, element)
-
-# integrate
-@inline function integrate(f, arraytype::ElementArrayType, fieldtype::FieldType, element::SingleElement)
-    T = infer_integeltype(f, arraytype, fieldtype, element)
-    A = create_elementarray(T, arraytype, fieldtype, element)
-    integrate!(f, A, arraytype, fieldtype, element)
+function integrate!(f, A::AbstractVector, ft::FieldType, element::BodyElement, qp::Int)
+    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds begin
+        v = shape_duals(ft, element, qp)
+        @assert length(A) == length(v)
+        @simd for i in 1:length(v)
+            A[i] += f(qp, v[i]) * element.detJdΩ[qp]
+        end
+    end
+    A
 end
-@inline integrate(f, fieldtype::FieldType, element::SingleElement) = integrate(f, ElementArrayType(f, element), fieldtype, element)
+
+# FaceElement
+function integrate!(f, A::AbstractVector, ft::FieldType, element::FaceElement, qp::Int)
+    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds begin
+        v = shape_values(ft, element, qp)
+        @assert length(A) == length(v)
+        @simd for i in 1:length(v)
+            A[i] += f(qp, element.normal[qp], v[i]) * element.detJdΩ[qp]
+        end
+    end
+    A
+end
 
 ##############################
 # shape values and gradients #
@@ -244,43 +292,7 @@ end
 
 shape_values(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_values(ft, Val(get_dimension(element)), element.N[qp]))
 shape_gradients(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_gradients(ft, Val(get_dimension(element)), element.dNdx[qp]))
-
-#################
-# build_element #
-#################
-
-## build element matrix and vector
-# BodyElement
-@inline function build_element(f, ::ElementArrayType{VectorOrMatrix}, fieldtype::FieldType, element::BodyElement, qp::Int) where {VectorOrMatrix}
+function shape_duals(ft::FieldType, element::SingleElement, qp::Int)
     @_propagate_inbounds_meta
-    N = shape_values(fieldtype, element, qp)
-    dNdx = shape_gradients(fieldtype, element, qp)
-    detJdΩ = element.detJdΩ[qp]
-    u = v = map(dual, N, dNdx)
-    VectorOrMatrix == Vector && return build_element_vector(f, detJdΩ, qp, v)
-    VectorOrMatrix == Matrix && return build_element_matrix(f, detJdΩ, qp, v, u)
-    error("unreachable")
-end
-# FaceElement
-@inline function build_element(f, ::ElementArrayType{Vector}, fieldtype::FieldType, element::FaceElement, qp::Int)
-    @_propagate_inbounds_meta
-    v = shape_values(fieldtype, element, qp)
-    detJdΩ = element.detJdΩ[qp]
-    normal = element.normal[qp]
-    build_element_vector(f, detJdΩ, qp, v, normal)
-end
-
-# helpers
-@inline function build_element_vector(f, detJdΩ, qp, v::SVector, args...)
-    mappedarray(v) do vi
-        @_inline_meta
-        f(qp, vi, args...) * detJdΩ
-    end
-end
-@inline function build_element_matrix(f, detJdΩ, qp, v::SVector, u::SVector)
-    mappedarray(CartesianIndices((length(v), length(u)))) do I
-        @_inline_meta
-        i, j = Tuple(I)
-        f(qp, u[j], v[i]) * detJdΩ
-    end
+    map(dual, shape_values(ft, element, qp), shape_gradients(ft, element, qp))
 end

@@ -48,7 +48,7 @@
     end
     @testset "generate_gridset" begin
         a = rand()
-        f(i,v,n) = a * v * n
+        f(i,n,v) = a * v * n
         for shape in (Quad4(), Quad9())
             gridset = generate_gridset(0:2, 0:3) # 2, 3
             @test sum(integrate(f, ScalarField(), gridset["left"])) ≈ [-3a, 0]
@@ -68,22 +68,21 @@
     end
     @testset "integrate" begin
         # test with one element
-        fieldtype = ScalarField()
         # dim 1
         grid = @inferred generate_grid(0:2:2)
         element = Element(Line2())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, fieldtype, grid)) ≈ integrate((qp,u,v)->v*u, fieldtype, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,v,u)->v*u, Sf(), Sf(), grid)) ≈ integrate((qp,v,u)->v*u, Sf(), Sf(), element)[inds, inds]
         # dim 2
         grid = @inferred generate_grid(0:2:2, 1:2:3)
         element = Element(Quad4())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, fieldtype, grid)) ≈ integrate((qp,u,v)->v*u, fieldtype, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,v,u)->v*u, Sf(), Sf(), grid)) ≈ integrate((qp,v,u)->v*u, Sf(), Sf(), element)[inds, inds]
         # dim 3
         grid = @inferred generate_grid(0:2:2, 1:2:3, 2:2:4)
         element = Element(Hex8())
         inds = only(grid.connectivities)
-        @test Femto.sparse(@inferred integrate((index,u,v)->v*u, fieldtype, grid)) ≈ integrate((qp,u,v)->v*u, fieldtype, element)[inds, inds]
+        @test Femto.sparse(@inferred integrate((index,v,u)->v*u, Sf(), Sf(), grid)) ≈ integrate((qp,v,u)->v*u, Sf(), Sf(), element)[inds, inds]
     end
 end
 

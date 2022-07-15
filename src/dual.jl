@@ -9,6 +9,7 @@ end
 
 Base.promote_rule(::Type{<: RealVec{T}}, ::Type{U}) where {T <: Real, U <: Real} = promote_type(T, U)
 Base.convert(::Type{T}, x::RealVec) where {T <: Real} = convert(T, x.scalar)
+Base.zero(::Type{RealVec{T, dim}}) where {T, dim} = RealVec(zero(T), zero(Vec{dim, T}))
 
 for op in (:+, :-, :*, :/)
     @eval Base.$op(a::RealVec, b::RealVec) = $op(a.scalar, b.scalar)
@@ -29,6 +30,7 @@ Base.Tuple(x::ValueGradientTensor) = Tuple(x.val)
     @boundscheck checkbounds(x, i)
     @inbounds x.val[i]
 end
+Base.zero(::Type{ValueGradientTensor{S, T, N, L, G}}) where {S, T, N, L, G} = ValueGradientTensor(zero(Tensor{S, T, N, L}), zero(G))
 
 ∇(x::ValueGradientTensor) = x.grad
 

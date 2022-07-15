@@ -53,13 +53,13 @@ highorder(::Tet10) = nothing
     @testset "gauss quadrature" begin
         @testset "$shape" for shape in allshapes()
             element = Element(shape)
-            V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
+            V = sum(integrate((qp,v,u)->v*u, Sf(), Sf(), element))
             @test V ≈ get_volume(shape)
             # high order quadrature
             shape_qr = highorder(shape)
             shape_qr === nothing && continue
             element = Element(shape, shape_qr)
-            V = sum(integrate((qp,u,v)->v*u, ScalarField(), element))
+            V = sum(integrate((qp,v,u)->v*u, Sf(), Sf(), element))
             @test V ≈ get_volume(shape)
         end
     end
@@ -67,7 +67,6 @@ end
 
 @testset "BodyElement integration" begin
     @testset "ScalarField" begin
-        fieldtype = ScalarField()
         element = Element(Quad4())
         update!(element, [Vec(0.0,0.0), Vec(1.0,0.5), Vec(2.0,1.0), Vec(0.5,0.8)])
         # mass matrix
@@ -76,24 +75,23 @@ end
             dΩ = element.detJdΩ[qp]
             N' * N * dΩ
         end
-        @test integrate((qp,u,v) -> v*u, fieldtype, element) ≈ M
+        @test integrate((qp,v,u) -> v*u, Sf(), Sf(), element) ≈ M
         # stiffness matrix
         K = sum(1:Femto.num_quadpoints(element)) do qp
             B = reduce(hcat, element.dNdx[qp])
             dΩ = element.detJdΩ[qp]
             B' * B * dΩ
         end
-        @test integrate((qp,u,v) -> ∇(v)⋅∇(u), fieldtype, element) ≈ K
+        @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(), Sf(), element) ≈ K
         # element vector
         F = sum(1:Femto.num_quadpoints(element)) do qp
             N = element.N[qp]
             dΩ = element.detJdΩ[qp]
             N * dΩ
         end
-        @test integrate((qp,v) -> v, fieldtype, element) ≈ F
+        @test integrate((qp,v) -> v, Sf(), element) ≈ F
     end
     @testset "VectorField" begin
-        fieldtype = VectorField()
         element = Element(Quad4())
         update!(element, [Vec(0.0,0.0), Vec(1.0,0.5), Vec(2.0,1.0), Vec(0.5,0.8)])
         # mass matrix
@@ -104,7 +102,7 @@ end
             dΩ = element.detJdΩ[qp]
             N' * N * dΩ
         end
-        @test integrate((qp,u,v) -> v⋅u, fieldtype, element) ≈ M
+        @test integrate((qp,v,u) -> v⋅u, Vf(), Vf(), element) ≈ M
         # stiffness matrix
         ke = rand(SymmetricFourthOrderTensor{2})
         K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -115,7 +113,7 @@ end
             dΩ = element.detJdΩ[qp]
             B' * tovoigt(ke) *  B * dΩ
         end
-        @test integrate((qp,u,v) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), fieldtype, element) ≈ K
+        @test integrate((qp,v,u) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), Vf(), Vf(), element) ≈ K
         # element vector
         σ = rand(SymmetricSecondOrderTensor{2})
         F = sum(1:Femto.num_quadpoints(element)) do qp
@@ -126,13 +124,12 @@ end
             dΩ = element.detJdΩ[qp]
             B' * tovoigt(σ) * dΩ
         end
-        @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), fieldtype, element) ≈ F
+        @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), Vf(), element) ≈ F
     end
 end
 
 @testset "FaceElement integration" begin
     @testset "ScalarField" begin
-        fieldtype = ScalarField()
         # dim 2
         element = FaceElement(Line2())
         p = rand()
@@ -145,10 +142,9 @@ end
             dΩ = element.detJdΩ[qp]
             p * N * dΩ
         end
-        @test integrate((qp,v,n) -> (p * v), fieldtype, element) ≈ F
+        @test integrate((qp,n,v) -> (p * v), Sf(), element) ≈ F
     end
     @testset "VectorField" begin
-        fieldtype = VectorField()
         @testset "dim = 2" begin
             element = FaceElement(Line2())
             p = rand()
@@ -162,7 +158,7 @@ end
                 dΩ = element.detJdΩ[qp]
                 p * N' * normal * dΩ
             end
-            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,n,v) -> p*n ⋅ v, Vf(), element) ≈ F
         end
         @testset "dim = 3" begin
             element = FaceElement(Quad4())
@@ -178,7 +174,7 @@ end
                 dΩ = element.detJdΩ[qp]
                 p * N' * normal * dΩ
             end
-            @test integrate((qp,v,n) -> p*n ⋅ v, fieldtype, element) ≈ F
+            @test integrate((qp,n,v) -> p*n ⋅ v, Vf(), element) ≈ F
         end
     end
 end

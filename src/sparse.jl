@@ -38,9 +38,6 @@ function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, J::AbstractVector{Int}
     end
     A
 end
-function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, K::AbstractMatrix)
-    add!(A, I, I, K)
-end
 
 fillzero!(A::SparseMatrixCOO) = (map(empty!, findnz(A)); A)
 fillzero!(A::SparseMatrixCSC) = dropzeros!(fill!(A, 0))

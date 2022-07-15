@@ -1,19 +1,18 @@
 using Femto
 
-function HeatEquation(filename = joinpath(@__DIR__, "model.msh"))
+function HeatEquation(filename = joinpath(@__DIR__, "model2d.msh"))
     HeatEquation(readgmsh(filename), dirname(filename))
 end
 
 function HeatEquation(gridset::Dict, dir::String = @__DIR__)
     grid = gridset["main"]
-    fieldtype = ScalarField()
 
-    K = integrate((index,u,v) -> ∇(v) ⋅ ∇(u), fieldtype, grid)
-    F = integrate((index,v) -> v, fieldtype, grid)
+    K = integrate((index,v,u) -> ∇(v) ⋅ ∇(u), Sf(), Sf(), grid)
+    F = integrate((index,v) -> v, Sf(), grid)
 
     U = zeros(length(F))
     dirichlet = falses(length(U))
-    dirichlet[eachnode(fieldtype, gridset["boundary"])] .= true
+    dirichlet[eachnode(Sf(), gridset["boundary"])] .= true
 
     solve!(U, K, F, dirichlet)
 
