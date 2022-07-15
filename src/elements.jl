@@ -162,8 +162,8 @@ end
 infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
 @pure _mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
 @pure function _infer_integeltype(f, ::Type{FT1}, ::Type{FT2}, ::Type{Elt}) where {FT1, FT2, T, Elt <: BodyElement{T}}
-    Tv = eltype(Base._return_type(shape_duals, Tuple{FT1, Elt, Int}))
-    Tu = eltype(Base._return_type(shape_duals, Tuple{FT2, Elt, Int}))
+    Tv = eltype(Base._return_type(shape_values, Tuple{FT1, Elt, Int}))
+    Tu = eltype(Base._return_type(shape_values, Tuple{FT2, Elt, Int}))
     ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv, Tu}), T)
     if ElType == Union{} || ElType == Any
         f(1, zero(Tv), zero(Tu)) # try run for error case
@@ -172,7 +172,7 @@ infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
     ElType
 end
 @pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, Elt <: BodyElement{T}}
-    Tv = eltype(Base._return_type(shape_duals, Tuple{FT, Elt, Int}))
+    Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
     ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv}), T)
     if ElType == Union{} || ElType == Any
         f(1, zero(Tv)) # try run for error case
@@ -237,8 +237,8 @@ end
 function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::BodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
-        v = shape_duals(ft1, element, qp)
-        u = shape_duals(ft2, element, qp)
+        v = shape_values(ft1, element, qp)
+        u = shape_values(ft2, element, qp)
         @assert size(A) == (length(v), length(u))
         for j in 1:length(u)
             @simd for i in 1:length(v)
@@ -251,7 +251,7 @@ end
 function integrate!(f, A::AbstractVector, ft::FieldType, element::BodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
-        v = shape_duals(ft, element, qp)
+        v = shape_values(ft, element, qp)
         @assert length(A) == length(v)
         @simd for i in 1:length(v)
             A[i] += f(qp, v[i]) * element.detJdΩ[qp]
@@ -278,10 +278,10 @@ end
 ##############################
 
 # ScalarField
-_shape_values(::ScalarField, ::Val, N::SVector) = N
-_shape_gradients(::ScalarField, ::Val, dNdx::SVector) = dNdx
+shape_values(::ScalarField, ::Val, N::SVector) = N
+shape_gradients(::ScalarField, ::Val, dNdx::SVector) = dNdx
 # VectorField
-@generated function _shape_values(::VectorField, ::Val{dim}, N::SVector{L, T}) where {dim, L, T}
+@generated function shape_values(::VectorField, ::Val{dim}, N::SVector{L, T}) where {dim, L, T}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         vals = [ifelse(i==d, :(N[$k]), :(zero($T))) for i in 1:dim]
@@ -293,7 +293,7 @@ _shape_gradients(::ScalarField, ::Val, dNdx::SVector) = dNdx
         SVector($(exps...))
     end
 end
-@generated function _shape_gradients(::VectorField, ::Val{dim}, dNdx::SVector{L, Vec{dim, T}}) where {dim, L, T}
+@generated function shape_gradients(::VectorField, ::Val{dim}, dNdx::SVector{L, Vec{dim, T}}) where {dim, L, T}
     exps = Expr[]
     for k in 1:L, d in 1:dim
         grads = [ifelse(i==d, :(dNdx[$k][$j]), :(zero($T))) for i in 1:dim, j in 1:dim]
@@ -306,9 +306,13 @@ end
     end
 end
 
-shape_values(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_values(ft, Val(get_dimension(element)), element.N[qp]))
-shape_gradients(ft::FieldType, element::SingleElement, qp::Int) = (@_propagate_inbounds_meta; _shape_gradients(ft, Val(get_dimension(element)), element.dNdx[qp]))
-function shape_duals(ft::FieldType, element::SingleElement, qp::Int)
+function shape_values(ft::FieldType, element::BodyElement, qp::Int)
     @_propagate_inbounds_meta
-    map(dual, shape_values(ft, element, qp), shape_gradients(ft, element, qp))
+    dim = get_dimension(element)
+    map(dual, shape_values(ft, Val(dim), element.N[qp]), shape_gradients(ft, Val(dim), element.dNdx[qp]))
+end
+function shape_values(ft::FieldType, element::FaceElement, qp::Int)
+    @_propagate_inbounds_meta
+    dim = get_dimension(element)
+    shape_values(ft, Val(dim), element.N[qp])
 end
