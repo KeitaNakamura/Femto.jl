@@ -17,6 +17,10 @@ end
 
 ∇(x::RealVec) = x.vector
 
+function Base.show(io::IO, x::RealVec)
+    print(io, x.scalar, " (∇x = ", x.vector, ")")
+end
+
 #######################
 # ValueGradientTensor #
 #######################
@@ -33,6 +37,10 @@ end
 Base.zero(::Type{ValueGradientTensor{S, T, N, L, G}}) where {S, T, N, L, G} = ValueGradientTensor(zero(Tensor{S, T, N, L}), zero(G))
 
 ∇(x::ValueGradientTensor) = x.grad
+
+function Base.show(io::IO, ::MIME"text/plain", x::ValueGradientTensor)
+    print(io, x.val, " (∇x = ", x.grad, ")")
+end
 
 ########
 # dual #
