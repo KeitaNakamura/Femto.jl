@@ -254,37 +254,51 @@ function infer_integeltype(f, ft::FieldType, grid::Grid)
     _infer_integeltype(f′, typeof(ft), get_elementtype(grid))
 end
 
-## integrate!
-function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
+## integrate_lowered!
+function integrate_lowered!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
     @assert size(A) == (num_dofs(ft1, grid), num_dofs(ft2, grid))
     zeroinit && fillzero!(A)
     element = create_element(grid)
-    Ke = create_elementmatrix(eltype(A), ft1, ft2, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_allnodes(grid)[conn])
-        f′ = convert_integrate_function(f, eltindex)
-        fillzero!(Ke)
-        integrate!(f′, Ke, ft1, ft2, element)
+        Ke = f(eltindex, element)
         dofs1 = dofindices(ft1, grid, conn)
         dofs2 = dofindices(ft2, grid, conn)
         add!(A, dofs1, dofs2, Ke)
     end
     A
 end
-function integrate!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
+function integrate_lowered!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
     @assert length(F) == num_dofs(ft, grid)
     zeroinit && fillzero!(F)
     element = create_element(grid)
-    Fe = create_elementvector(eltype(F), ft, element)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_allnodes(grid)[conn])
-        f′ = convert_integrate_function(f, eltindex)
-        fillzero!(Fe)
-        integrate!(f′, Fe, ft, element)
+        Fe = f(eltindex, element)
         dofs = dofindices(ft, grid, conn)
         add!(F, dofs, Fe)
     end
     F
+end
+
+## integrate!
+function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
+    Ke = create_elementmatrix(eltype(A), ft1, ft2, create_element(grid))
+    integrate_lowered!(A, ft1, ft2, grid; zeroinit) do eltindex, element
+        f′ = convert_integrate_function(f, eltindex)
+        fillzero!(Ke)
+        integrate!(f′, Ke, ft1, ft2, element)
+        Ke
+    end
+end
+function integrate!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
+    Fe = create_elementvector(eltype(F), ft, create_element(grid))
+    integrate_lowered!(F, ft, grid; zeroinit) do eltindex, element
+        f′ = convert_integrate_function(f, eltindex)
+        fillzero!(Fe)
+        integrate!(f′, Fe, ft, element)
+        Fe
+    end
 end
 
 ## integrate
