@@ -1,7 +1,7 @@
 name = "Femto"
 uuid = "8a6dffb5-f0a3-43b0-807d-ee99672b66b8"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.2.1"
+version = "0.3.0"
 
 [deps]
 GmshReader = "bf82f66e-8fcd-4ce9-a12d-a25ca77d3b00"
