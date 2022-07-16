@@ -23,6 +23,7 @@ export
     decrease_order,
     # dual
     ∇,
+    Π,
     # sparse
     SparseMatrixCOO,
     # field
