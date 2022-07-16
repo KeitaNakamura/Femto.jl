@@ -52,7 +52,7 @@ function Base.show(io::IO, mime::MIME"text/plain", A::SparseMatrixCOO)
     S = sparse(A)
     m, n = size(S)
     k = nnz(S)
-    println(io, m, "×", m, " ", typeof(A), " with ", k, " stored ", k == 1 ? "entry" : "entries", ":")
+    println(io, m, "×", n, " ", typeof(A), " with ", k, " stored ", k == 1 ? "entry" : "entries", ":")
     isempty(A.I) || Base.print_array(io, S)
 end
 Base.show(io::IO, A::SparseMatrixCOO) = show(io, sparse(A))
