@@ -24,6 +24,8 @@ struct SingleBodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, L} <: Singl
     N::Vector{SVector{L, T}}
     dNdx::Vector{SVector{L, Vec{dim, T}}}
     detJdΩ::Vector{T}
+    Π_N::MVector{L, T}
+    Π_dNdx::MVector{L, Vec{dim, T}}
 end
 
 function SingleBodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
@@ -32,7 +34,9 @@ function SingleBodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) w
     N = zeros(SVector{L, T}, n)
     dNdx = zeros(SVector{L, Vec{dim, T}}, n)
     detJdΩ = zeros(T, n)
-    element = SingleBodyElement(shape, shape_qr, N, dNdx, detJdΩ)
+    Π_N = MVector{L, T}(undef)
+    Π_dNdx = MVector{L, Vec{dim, T}}(undef)
+    element = SingleBodyElement(shape, shape_qr, N, dNdx, detJdΩ, Π_N, Π_dNdx)
     update!(element, get_local_coordinates(shape))
     element
 end
@@ -46,6 +50,9 @@ function update!(element::SingleBodyElement, xᵢ::AbstractVector{<: Vec})
         element.dNdx[i] = dNᵢdξ .⋅ inv(J)
         element.detJdΩ[i] = w * det(J)
     end
+    V = integrate(i->1, element)
+    integrate!((i,v)->v/V, element.Π_N, Sf(), element)
+    integrate!((i,v)->∇(v)/V, element.Π_dNdx, Sf(), element)
     element
 end
 
