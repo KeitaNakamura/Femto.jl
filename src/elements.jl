@@ -163,35 +163,39 @@ infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
 @pure function _infer_integeltype(f, ::Type{FT1}, ::Type{FT2}, ::Type{Elt}) where {FT1, FT2, T, Elt <: BodyElement{T}}
     Tv = eltype(Base._return_type(shape_values, Tuple{FT1, Elt, Int}))
     Tu = eltype(Base._return_type(shape_values, Tuple{FT2, Elt, Int}))
-    ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv, Tu}), T)
+    Args = Tuple{Int, Tv, Tu}
+    ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
-        f(1, zero(Tv), zero(Tu)) # try run for error case
+        f(zero_recursive(Args)...) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
 end
 @pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, Elt <: BodyElement{T}}
     Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
-    ElType = _mul_type(Base._return_type(f, Tuple{Int, Tv}), T)
+    Args = Tuple{Int, Tv}
+    ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
-        f(1, zero(Tv)) # try run for error case
+        f(zero_recursive(Args)...) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
 end
 @pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, dim, Elt <: FaceElement{T, dim}}
     Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
-    ElType = _mul_type(Base._return_type(f, Tuple{Int, Vec{dim, T}, Tv}), T)
+    Args = Tuple{Int, Vec{dim, T}, Tv}
+    ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
-        f(1, zero(Vec{dim, T}), zero(Tv)) # try run for error case
+        f(zero_recursive(Args)...) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
 end
 @pure function _infer_integeltype(f, ::Type{Elt}) where {T, dim, Elt <: Element{T, dim}}
-    ElType = _mul_type(Base._return_type(f, Tuple{Int}), T)
+    Args = Tuple{Int}
+    ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
-        f(1) # try run for error case
+        f(zero_recursive(Args)...) # try run for error case
         error("type inference failed in `infer_integeltype`, consider using inplace version `integrate!`")
     end
     ElType
