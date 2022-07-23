@@ -1,13 +1,18 @@
 # shape must be unique in grid
-struct Grid{T, dim, Elt <: Element{T, dim}, L}
+struct Grid{T, dim, Elt <: AbstractElement{T, dim}, L}
     element::Elt
     nodes::Vector{Vec{dim, T}}
     connectivities::Vector{Index{L}}
     nodeindices::Vector{Int}
 end
 
-function Grid(shape::Shape, nodes::Vector{Vec{dim, T}}, connectivities::Vector{<: Index}, nodeindices::Vector{Int}) where {dim, T}
-    element = Element{T, dim}(shape)
+function Grid(shape::Shape{dim}, nodes::Vector{Vec{dim, T}}, connectivities::Vector{<: Index}, nodeindices::Vector{Int}) where {dim, T}
+    element = Element(T, shape)
+    Grid(element, nodes, connectivities, nodeindices)
+end
+function Grid(shape::Shape{shape_dim}, nodes::Vector{Vec{dim, T}}, connectivities::Vector{<: Index}, nodeindices::Vector{Int}) where {shape_dim, dim, T}
+    @assert shape_dim + 1 == dim
+    element = FaceElement(T, shape)
     Grid(element, nodes, connectivities, nodeindices)
 end
 function Grid(shape::Shape, nodes::Vector{<: Vec}, connectivities::Vector{<: Index})

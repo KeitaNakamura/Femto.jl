@@ -26,7 +26,7 @@ highorder(::Tet10) = nothing
             for T in (Float64, Float32)
                 TOL = sqrt(eps(T))
                 dim = Femto.get_dimension(shape)
-                element = Element{T}(shape)
+                element = Element(T, shape)
                 X = @inferred interpolate(VectorField(), element, reinterpret(T, Femto.get_local_coordinates(element)))
                 for qp in Femto.num_quadpoints(element)
                     ## shape values and gradients

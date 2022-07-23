@@ -1,97 +1,16 @@
-###########
-# Element #
-###########
+abstract type AbstractElement{T, dim} end
 
-abstract type Element{T, dim} end
+Element(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = SingleBodyElement(T, shape, shape_qr)
+Element(shape::Shape, shape_qr::Shape = shape) = Element(Float64, shape, shape_qr)
 
-Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim}=shape) where {T, dim} = BodyElement{T}(shape, shape_qr)
-Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, dim, shape_dim} = FaceElement{T}(shape, shape_qr)
-
-# use `shape_dim` for `dim` by default
-Element{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {T, shape_dim} = Element{T, shape_dim}(shape, shape_qr)
-Element(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim}=shape) where {shape_dim} = Element{Float64, shape_dim}(shape, shape_qr)
-
-###############
-# BodyElement #
-###############
-
-struct BodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, L} <: Element{T, dim}
-    shape::S
-    shape_qr::Sqr
-    N::Vector{SVector{L, T}}
-    dNdx::Vector{SVector{L, Vec{dim, T}}}
-    detJdΩ::Vector{T}
-end
-
-function BodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
-    L = num_nodes(shape)
-    n = num_quadpoints(shape_qr)
-    N = zeros(SVector{L, T}, n)
-    dNdx = zeros(SVector{L, Vec{dim, T}}, n)
-    detJdΩ = zeros(T, n)
-    element = BodyElement(shape, shape_qr, N, dNdx, detJdΩ)
-    update!(element, get_local_coordinates(shape))
-    element
-end
-BodyElement(shape::Shape, shape_qr::Shape = shape) = BodyElement{Float64}(shape, shape_qr)
-
-function update!(element::BodyElement, xᵢ::AbstractVector{<: Vec})
-    @assert num_nodes(element) == length(xᵢ)
-    @inbounds for (i, (ξ, w)) in enumerate(zip(quadpoints(element), quadweights(element)))
-        Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
-        J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
-        element.N[i] = Nᵢ
-        element.dNdx[i] = dNᵢdξ .⋅ inv(J)
-        element.detJdΩ[i] = w * det(J)
-    end
-    element
-end
-
-###############
-# FaceElement #
-###############
-
-struct FaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{shape_dim}, L} <: Element{T, dim}
-    shape::S
-    shape_qr::Sqr
-    N::Vector{SVector{L, T}}
-    normal::Vector{Vec{dim, T}}
-    detJdΩ::Vector{T}
-end
-
-function FaceElement{T}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, shape_dim}
-    dim = shape_dim + 1
-    L = num_nodes(shape)
-    n = num_quadpoints(shape_qr)
-    N = zeros(SVector{L, T}, n)
-    normal = zeros(Vec{dim, T}, n)
-    detJdΩ = zeros(T, n)
-    element = FaceElement(shape, shape_qr, N, normal, detJdΩ)
-    update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_coordinates(shape)))
-    element
-end
-FaceElement(shape::Shape, shape_qr::Shape = shape) = FaceElement{Float64}(shape, shape_qr)
-
-get_normal(J::Mat{3,2}) = J[:,1] × J[:,2]
-get_normal(J::Mat{2,1}) = Vec(J[2,1], -J[1,1])
-function update!(element::FaceElement, xᵢ::AbstractVector{<: Vec})
-    @assert num_nodes(element) == length(xᵢ)
-    @inbounds for (i, (ξ, w)) in enumerate(zip(quadpoints(element), quadweights(element)))
-        Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
-        J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
-        n = get_normal(J)
-        element.N[i] = Nᵢ
-        element.normal[i] = normalize(n)
-        element.detJdΩ[i] = w * norm(n)
-    end
-    element
-end
+FaceElement(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = SingleFaceElement(T, shape, shape_qr)
+FaceElement(shape::Shape, shape_qr::Shape = shape) = FaceElement(Float64, shape, shape_qr)
 
 #################
 # SingleElement #
 #################
 
-const SingleElement{dim, T} = Union{BodyElement{dim, T}, FaceElement{dim, T}}
+abstract type SingleElement{T, dim} <: AbstractElement{T, dim} end
 
 get_shape(elt::SingleElement) = elt.shape
 get_shape_qr(elt::SingleElement) = elt.shape_qr
@@ -107,6 +26,80 @@ quadpoints(elt::SingleElement{T}) where {T} = quadpoints(T, get_shape_qr(elt))
 quadweights(elt::SingleElement{T}) where {T} = quadweights(T, get_shape_qr(elt))
 
 dofindices(field::AbstractField, element::SingleElement, I) = dofindices(field, Val(get_dimension(element)), I)
+
+#####################
+# SingleBodyElement #
+#####################
+
+struct SingleBodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, L} <: SingleElement{T, dim}
+    shape::S
+    shape_qr::Sqr
+    N::Vector{SVector{L, T}}
+    dNdx::Vector{SVector{L, Vec{dim, T}}}
+    detJdΩ::Vector{T}
+end
+
+function SingleBodyElement(::Type{T}, shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
+    L = num_nodes(shape)
+    n = num_quadpoints(shape_qr)
+    N = zeros(SVector{L, T}, n)
+    dNdx = zeros(SVector{L, Vec{dim, T}}, n)
+    detJdΩ = zeros(T, n)
+    element = SingleBodyElement(shape, shape_qr, N, dNdx, detJdΩ)
+    update!(element, get_local_coordinates(shape))
+    element
+end
+
+function update!(element::SingleBodyElement, xᵢ::AbstractVector{<: Vec})
+    @assert num_nodes(element) == length(xᵢ)
+    @inbounds for (i, (ξ, w)) in enumerate(zip(quadpoints(element), quadweights(element)))
+        Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
+        J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
+        element.N[i] = Nᵢ
+        element.dNdx[i] = dNᵢdξ .⋅ inv(J)
+        element.detJdΩ[i] = w * det(J)
+    end
+    element
+end
+
+#####################
+# SingleFaceElement #
+#####################
+
+struct SingleFaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{shape_dim}, L} <: SingleElement{T, dim}
+    shape::S
+    shape_qr::Sqr
+    N::Vector{SVector{L, T}}
+    normal::Vector{Vec{dim, T}}
+    detJdΩ::Vector{T}
+end
+
+function SingleFaceElement(::Type{T}, shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, shape_dim}
+    dim = shape_dim + 1
+    L = num_nodes(shape)
+    n = num_quadpoints(shape_qr)
+    N = zeros(SVector{L, T}, n)
+    normal = zeros(Vec{dim, T}, n)
+    detJdΩ = zeros(T, n)
+    element = SingleFaceElement(shape, shape_qr, N, normal, detJdΩ)
+    update!(element, map(x -> Vec{dim}(i -> i ≤ shape_dim ? x[i] : 0), get_local_coordinates(shape)))
+    element
+end
+
+get_normal(J::Mat{3,2}) = J[:,1] × J[:,2]
+get_normal(J::Mat{2,1}) = Vec(J[2,1], -J[1,1])
+function update!(element::SingleFaceElement, xᵢ::AbstractVector{<: Vec})
+    @assert num_nodes(element) == length(xᵢ)
+    @inbounds for (i, (ξ, w)) in enumerate(zip(quadpoints(element), quadweights(element)))
+        Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
+        J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
+        n = get_normal(J)
+        element.N[i] = Nᵢ
+        element.normal[i] = normalize(n)
+        element.detJdΩ[i] = w * norm(n)
+    end
+    element
+end
 
 ###############
 # interpolate #
@@ -160,7 +153,7 @@ end
 # infer_integeltype
 infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
 @pure _mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
-@pure function _infer_integeltype(f, ::Type{Fld1}, ::Type{Fld2}, ::Type{Elt}) where {Fld1, Fld2, T, Elt <: BodyElement{T}}
+@pure function _infer_integeltype(f, ::Type{Fld1}, ::Type{Fld2}, ::Type{Elt}) where {Fld1, Fld2, T, Elt <: SingleBodyElement{T}}
     Tv = eltype(Base._return_type(shape_values, Tuple{Fld1, Elt, Int}))
     Tu = eltype(Base._return_type(shape_values, Tuple{Fld2, Elt, Int}))
     Args = Tuple{Int, Tv, Tu}
@@ -171,7 +164,7 @@ infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
     end
     ElType
 end
-@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElement{T}}
+@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: SingleBodyElement{T}}
     Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
@@ -181,7 +174,7 @@ end
     end
     ElType
 end
-@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, dim, Elt <: FaceElement{T, dim}}
+@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, dim, Elt <: SingleFaceElement{T, dim}}
     Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Vec{dim, T}, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
@@ -191,7 +184,7 @@ end
     end
     ElType
 end
-@pure function _infer_integeltype(f, ::Type{Elt}) where {T, dim, Elt <: Element{T, dim}}
+@pure function _infer_integeltype(f, ::Type{Elt}) where {T, dim, Elt <: SingleElement{T, dim}}
     Args = Tuple{Int}
     ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
@@ -226,8 +219,8 @@ function integrate!(f, A::AbstractVector, field::AbstractField, element::SingleE
 end
 
 ## integrate! at each quadrature point
-# BodyElement
-function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, element::BodyElement, qp::Int)
+# SingleBodyElement
+function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, element::SingleBodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field1, element, qp)
@@ -241,7 +234,7 @@ function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::Abstrac
     end
     A
 end
-function integrate!(f, A::AbstractVector, field::AbstractField, element::BodyElement, qp::Int)
+function integrate!(f, A::AbstractVector, field::AbstractField, element::SingleBodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field, element, qp)
@@ -253,8 +246,8 @@ function integrate!(f, A::AbstractVector, field::AbstractField, element::BodyEle
     A
 end
 
-# FaceElement
-function integrate!(f, A::AbstractVector, field::AbstractField, element::FaceElement, qp::Int)
+# SingleFaceElement
+function integrate!(f, A::AbstractVector, field::AbstractField, element::SingleFaceElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field, element, qp)
@@ -299,12 +292,12 @@ end
     end
 end
 
-function shape_values(field::AbstractField, element::BodyElement, qp::Int)
+function shape_values(field::AbstractField, element::SingleBodyElement, qp::Int)
     @_propagate_inbounds_meta
     dim = get_dimension(element)
     map(dual_gradient, shape_values(field, Val(dim), element.N[qp]), shape_gradients(field, Val(dim), element.dNdx[qp]))
 end
-function shape_values(field::AbstractField, element::FaceElement, qp::Int)
+function shape_values(field::AbstractField, element::SingleFaceElement, qp::Int)
     @_propagate_inbounds_meta
     dim = get_dimension(element)
     shape_values(field, Val(dim), element.N[qp])

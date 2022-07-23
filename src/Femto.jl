@@ -27,10 +27,9 @@ export
     Vf,
     # Element
     Element,
-    BodyElement,
     FaceElement,
-    ElementVector,
-    ElementMatrix,
+    SingleBodyElement,
+    SingleFaceElement,
     update!,
     integrate,
     interpolate,
