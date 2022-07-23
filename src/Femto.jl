@@ -16,6 +16,12 @@ export
     spdiagm
 
 export
+    # common
+    get_shape,
+    num_dofs,
+    integrate,
+    integrate!,
+    interpolate,
     # dual
     ∇,
     # sparse
@@ -31,8 +37,6 @@ export
     SingleBodyElement,
     SingleFaceElement,
     update!,
-    integrate,
-    interpolate,
     # Shape
     Shape,
     Line2,
@@ -47,14 +51,11 @@ export
     Tet10,
     # Grid
     Grid,
-    num_dofs,
     num_allnodes,
     get_allnodes,
     get_connectivities,
-    get_shape,
     eachnode,
     eachelement,
-    integrate!,
     generate_grid,
     generate_gridset,
     generate_elementstate,
