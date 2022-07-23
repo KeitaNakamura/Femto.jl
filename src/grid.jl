@@ -42,16 +42,22 @@ num_elements(grid::Grid) = length(get_connectivities(grid))
 num_dofs(::ScalarField, grid::Grid) = num_allnodes(grid)
 num_dofs(::VectorField, grid::Grid) = num_allnodes(grid) * get_dimension(grid)
 
-########################
-# eachnode/eachelement #
-########################
+########
+# dofs #
+########
 
-function eachnode(field::AbstractField, grid::Grid)
+function nodedofs(field::SingleField, grid::Grid)
     mappedarray(i -> dofindices(field, Val(get_dimension(grid)), i), get_nodeindices(grid))
 end
 
-function eachelement(field::AbstractField, grid::Grid)
-    mappedarray(conn -> dofindices(field, Val(get_dimension(grid)), conn), get_connectivities(grid))
+function elementdofs(field::SingleField, grid::Grid, i::Int)
+    conns = get_connectivities(grid)
+    @boundscheck checkbounds(conns, i)
+    @inbounds conn = conns[i]
+    dofindices(field, Val(get_dimension(grid)), conn)
+end
+function elementdofs(field::SingleField, grid::Grid)
+    mappedarray(i -> elementdofs(field, grid, i), 1:num_elements(grid))
 end
 
 #################
@@ -255,8 +261,10 @@ end
 function integrate_lowered!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, grid::Grid; zeroinit::Bool = true)
     @assert size(A) == (num_dofs(field1, grid), num_dofs(field2, grid))
     zeroinit && fillzero!(A)
-    for (eltindex, (dofs1, dofs2)) in enumerate(zip(eachelement(field1, grid), eachelement(field2, grid)))
+    for eltindex in 1:num_elements(grid)
         Ke = f(eltindex, get_element(grid, eltindex))
+        dofs1 = elementdofs(field1, grid, eltindex)
+        dofs2 = elementdofs(field2, grid, eltindex)
         add!(A, dofs1, dofs2, Ke)
     end
     A
@@ -264,8 +272,9 @@ end
 function integrate_lowered!(f, F::AbstractVector, field::AbstractField, grid::Grid; zeroinit::Bool = true)
     @assert length(F) == num_dofs(field, grid)
     zeroinit && fillzero!(F)
-    for (eltindex, dofs) in enumerate(eachelement(field, grid))
+    for eltindex in 1:num_elements(grid)
         Fe = f(eltindex, get_element(grid, eltindex))
+        dofs = elementdofs(field, grid, eltindex)
         add!(F, dofs, Fe)
     end
     F

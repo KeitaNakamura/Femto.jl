@@ -16,7 +16,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     Uₙ₊₁ = zeros(ndofs)
 
     dirichlet = falses(ndofs)
-    dirichlet[eachnode(Sf(), gridset["boundary"])] .= true
+    dirichlet[nodedofs(Sf(), gridset["boundary"])] .= true
 
     outdir = joinpath(dirname(filename), "Output")
     mkpath(outdir)

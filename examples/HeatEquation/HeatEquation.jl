@@ -12,7 +12,7 @@ function HeatEquation(gridset::Dict, dir::String = @__DIR__)
 
     U = zeros(length(F))
     dirichlet = falses(length(U))
-    dirichlet[eachnode(Sf(), gridset["boundary"])] .= true
+    dirichlet[nodedofs(Sf(), gridset["boundary"])] .= true
 
     solve!(U, K, F, dirichlet)
 
