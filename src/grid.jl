@@ -38,6 +38,13 @@ get_nodeindices(grid::Grid) = grid.nodeindices
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
 get_element(grid::Grid) = grid.element
+function get_element(grid::Grid, i::Int)
+    @boundscheck 1 ≤ i ≤ num_elements(grid)
+    @inbounds conn = get_connectivities(grid)[i]
+    element = get_element(grid)
+    update!(element, get_allnodes(grid)[conn])
+    element
+end
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
@@ -259,12 +266,8 @@ end
 function integrate_lowered!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, grid::Grid; zeroinit::Bool = true)
     @assert size(A) == (num_dofs(field1, grid), num_dofs(field2, grid))
     zeroinit && fillzero!(A)
-    element = get_element(grid)
-    for (eltindex, conn) in enumerate(get_connectivities(grid))
-        update!(element, get_allnodes(grid)[conn])
-        Ke = f(eltindex, element)
-        dofs1 = dofindices(field1, grid, conn)
-        dofs2 = dofindices(field2, grid, conn)
+    for (eltindex, (dofs1, dofs2)) in enumerate(zip(eachelement(field1, grid), eachelement(field2, grid)))
+        Ke = f(eltindex, get_element(grid, eltindex))
         add!(A, dofs1, dofs2, Ke)
     end
     A
@@ -272,11 +275,8 @@ end
 function integrate_lowered!(f, F::AbstractVector, field::AbstractField, grid::Grid; zeroinit::Bool = true)
     @assert length(F) == num_dofs(field, grid)
     zeroinit && fillzero!(F)
-    element = get_element(grid)
-    for (eltindex, conn) in enumerate(get_connectivities(grid))
-        update!(element, get_allnodes(grid)[conn])
-        Fe = f(eltindex, element)
-        dofs = dofindices(field, grid, conn)
+    for (eltindex, dofs) in enumerate(eachelement(field, grid))
+        Fe = f(eltindex, get_element(grid, eltindex))
         add!(F, dofs, Fe)
     end
     F
@@ -322,11 +322,11 @@ end
 # returned mappedarray's size is the same as elementstate matrix
 function interpolate(grid::Grid{T}, nodalvalues::AbstractVector) where {T}
     @assert num_allnodes(grid) == length(nodalvalues)
-    element = get_element(grid)
-    dims = (num_quadpoints(element), num_elements(grid))
+    dims = (num_quadpoints(get_element(grid)), num_elements(grid))
     mappedarray(CartesianIndices(dims)) do I
         qp, eltindex = Tuple(I)
         conn = get_connectivities(grid)[eltindex]
+        element = get_element(grid, eltindex)
         interpolate(element, nodalvalues[conn], qp)
     end
 end
