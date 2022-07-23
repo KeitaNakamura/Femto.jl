@@ -65,7 +65,7 @@ highorder(::Tet10) = nothing
     end
 end
 
-@testset "BodyElement integration" begin
+@testset "SingleBodyElement integration" begin
     @testset "ScalarField" begin
         element = Element(Quad4())
         update!(element, [Vec(0.0,0.0), Vec(1.0,0.5), Vec(2.0,1.0), Vec(0.5,0.8)])
@@ -128,7 +128,7 @@ end
     end
 end
 
-@testset "FaceElement integration" begin
+@testset "SingleFaceElement integration" begin
     @testset "ScalarField" begin
         # dim 2
         element = FaceElement(Line2())
