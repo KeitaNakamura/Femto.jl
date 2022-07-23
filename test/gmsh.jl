@@ -22,9 +22,12 @@ import GmshReader
     @testset "readgmsh" begin
         data = readgmsh("square.msh")
         @test sort(collect(keys(data))) == sort(["left_right", "top_bottom", "main"])
-        @test data["main"] isa Grid{Float64, 2, 2, Tri3, 3}
-        @test data["left_right"] isa Grid{Float64, 2, 1, Line2, 2}
-        @test data["top_bottom"] isa Grid{Float64, 2, 1, Line2, 2}
+        @test data["main"] isa Grid{Float64, 2}
+        @test data["left_right"] isa Grid{Float64, 2}
+        @test data["top_bottom"] isa Grid{Float64, 2}
+        @test Femto.get_shape(Femto.get_element(data["main"])) === Tri3()
+        @test Femto.get_shape(Femto.get_element(data["left_right"])) === Line2()
+        @test Femto.get_shape(Femto.get_element(data["top_bottom"])) === Line2()
         ## nodes
         @test data["main"].nodes === data["left_right"].nodes === data["top_bottom"].nodes
         ## nodal indices

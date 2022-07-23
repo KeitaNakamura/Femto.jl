@@ -24,7 +24,7 @@ to_vtk_connectivity(::Hex27) = Index(1,2,3,4,10,11,12,13,5,6,7,8,14,15,16,17,19,
 
 function WriteVTK.vtk_grid(filename::AbstractString, grid::Grid{T, dim}; kwargs...) where {T, dim}
     cells = MeshCell[]
-    shape = get_shape(grid)
+    shape = get_shape(get_element(grid))
     celltype = to_vtk_celltype(shape)
     for conn in get_connectivities(grid)
         push!(cells, MeshCell(celltype, conn[to_vtk_connectivity(shape)]))
