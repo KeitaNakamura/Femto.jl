@@ -50,6 +50,8 @@ export
     num_dofs,
     num_allnodes,
     get_allnodes,
+    get_connectivities,
+    get_shape,
     eachnode,
     eachelement,
     integrate!,

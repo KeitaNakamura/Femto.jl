@@ -7,11 +7,11 @@
         # 1st order
         grid = @inferred generate_grid(Float64, axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
-        @test Femto.get_shape(Femto.get_element(grid)) === Line2()
+        @test Femto.get_shape(grid) === Line2()
         # 2nd order
         grid = @inferred generate_grid(Float64, Line3(), axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, 0:0.5:3.0))
-        @test Femto.get_shape(Femto.get_element(grid)) === Line3()
+        @test Femto.get_shape(grid) === Line3()
 
         ## dim 2
         axs = (0:1.0:3.0, 0:0.5:2.0)
@@ -20,11 +20,11 @@
         # 1st order
         grid = @inferred generate_grid(Float64, axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
-        @test Femto.get_shape(Femto.get_element(grid)) === Quad4()
+        @test Femto.get_shape(grid) === Quad4()
         # 2nd order
         grid = @inferred generate_grid(Float64, Quad9(), axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(0:0.5:3.0, 0:0.25:2.0)))
-        @test Femto.get_shape(Femto.get_element(grid)) === Quad9()
+        @test Femto.get_shape(grid) === Quad9()
 
         ## dim 3
         axs = (0:1.0:3.0, 0:0.5:2.0, 0:0.2:3.0)
@@ -33,11 +33,11 @@
         # 1st order
         grid = @inferred generate_grid(Float64, axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(axs...)))
-        @test Femto.get_shape(Femto.get_element(grid)) === Hex8()
+        @test Femto.get_shape(grid) === Hex8()
         # 2nd order
         grid = @inferred generate_grid(Float64, Hex27(), axs...)
         @test Femto.get_allnodes(grid) ≈ vec(map(Vec, Iterators.product(0:0.5:3.0, 0:0.25:2.0, 0:0.1:3.0)))
-        @test Femto.get_shape(Femto.get_element(grid)) === Hex27()
+        @test Femto.get_shape(grid) === Hex27()
 
         ## connectivities
         grid = @inferred generate_grid(0:0.5:1, 0:1:2)

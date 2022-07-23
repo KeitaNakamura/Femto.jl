@@ -19,16 +19,6 @@ function Grid(shape::Shape, nodes::Vector{<: Vec}, connectivities::Vector{<: Ind
     Grid(shape, nodes, connectivities, collect(1:length(nodes)))
 end
 
-# useful to extend the dimension (e.g., dim=2 -> dim=3)
-function Grid{T, dim}(grid::Grid) where {T, dim}
-    element = get_element(grid)
-    nodes = map(x -> Vec{dim, T}(Tensorial.resizedim(x, Val(dim))), get_allnodes(grid))
-    connectivities = get_connectivities(grid)
-    nodeindices = get_nodeindices(grid)
-    Grid(get_shape(element), nodes, connectivities, nodeindices)
-end
-Grid{T, dim}(grid::Grid{T, dim}) where {T, dim} = grid
-
 #########
 # utils #
 #########
@@ -45,6 +35,7 @@ function get_element(grid::Grid, i::Int)
     update!(element, get_allnodes(grid)[conn])
     element
 end
+get_shape(grid::Grid) = get_shape(get_element(grid))
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
@@ -318,7 +309,7 @@ end
 ###############
 
 # returned mappedarray's size is the same as elementstate matrix
-function interpolate(grid::Grid{T}, nodalvalues::AbstractVector) where {T}
+function interpolate(grid::Grid, nodalvalues::AbstractVector)
     @assert num_allnodes(grid) == length(nodalvalues)
     dims = (num_quadpoints(get_element(grid)), num_elements(grid))
     mappedarray(CartesianIndices(dims)) do I

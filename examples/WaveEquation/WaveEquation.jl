@@ -21,7 +21,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     outdir = joinpath(dirname(filename), "Output")
     mkpath(outdir)
     pvd = openpvd(joinpath(outdir, "WaveEquation"))
-    mesh = Grid{Float64, 3}(grid)
+    mesh = Grid(get_shape(grid), map(x -> [x; 0], get_allnodes(grid)), get_connectivities(grid))
 
     timespan = 0.0:0.01:5.0
     dt = step(timespan)

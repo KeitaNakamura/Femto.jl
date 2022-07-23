@@ -25,9 +25,9 @@ import GmshReader
         @test data["main"] isa Grid{Float64, 2}
         @test data["left_right"] isa Grid{Float64, 2}
         @test data["top_bottom"] isa Grid{Float64, 2}
-        @test Femto.get_shape(Femto.get_element(data["main"])) === Tri3()
-        @test Femto.get_shape(Femto.get_element(data["left_right"])) === Line2()
-        @test Femto.get_shape(Femto.get_element(data["top_bottom"])) === Line2()
+        @test Femto.get_shape(data["main"]) === Tri3()
+        @test Femto.get_shape(data["left_right"]) === Line2()
+        @test Femto.get_shape(data["top_bottom"]) === Line2()
         ## nodes
         @test data["main"].nodes === data["left_right"].nodes === data["top_bottom"].nodes
         ## nodal indices
