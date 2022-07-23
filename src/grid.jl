@@ -50,20 +50,17 @@ num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
 num_dofs(::ScalarField, grid::Grid) = num_allnodes(grid)
 num_dofs(::VectorField, grid::Grid) = num_allnodes(grid) * get_dimension(grid)
-num_elementdofs(field::AbstractField, grid::Grid) = num_dofs(field, get_element(grid))
-
-dofindices(field::AbstractField, grid::Grid, I) = dofindices(field, Val(get_dimension(grid)), I)
 
 ########################
 # eachnode/eachelement #
 ########################
 
 function eachnode(field::AbstractField, grid::Grid)
-    mappedarray(i -> dofindices(field, grid, i), get_nodeindices(grid))
+    mappedarray(i -> dofindices(field, Val(get_dimension(grid)), i), get_nodeindices(grid))
 end
 
 function eachelement(field::AbstractField, grid::Grid)
-    mappedarray(conn -> dofindices(field, grid, conn), get_connectivities(grid))
+    mappedarray(conn -> dofindices(field, Val(get_dimension(grid)), conn), get_connectivities(grid))
 end
 
 #################
@@ -244,7 +241,8 @@ end
 function create_array(::Type{T}, field1::AbstractField, field2::AbstractField, grid::Grid) where {T}
     m = num_dofs(field1, grid)
     n = num_dofs(field2, grid)
-    sizehint = num_elementdofs(field1, grid) * num_elementdofs(field2, grid) * num_elements(grid)
+    element = get_element(grid)
+    sizehint = num_dofs(field1, element) * num_dofs(field2, element) * num_elements(grid)
     SparseMatrixCOO{T}(m, n; sizehint)
 end
 function create_array(::Type{T}, field::AbstractField, grid::Grid) where {T}
