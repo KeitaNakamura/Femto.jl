@@ -38,20 +38,20 @@ num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
 num_dofs(::ScalarField, grid::Grid) = num_allnodes(grid)
 num_dofs(::VectorField, grid::Grid) = num_allnodes(grid) * get_dimension(grid)
-num_elementdofs(ft::FieldType, grid::Grid) = num_dofs(ft, get_element(grid))
+num_elementdofs(field::AbstractField, grid::Grid) = num_dofs(field, get_element(grid))
 
-dofindices(ftype::FieldType, grid::Grid, I) = dofindices(ftype, Val(get_dimension(grid)), I)
+dofindices(field::AbstractField, grid::Grid, I) = dofindices(field, Val(get_dimension(grid)), I)
 
 ########################
 # eachnode/eachelement #
 ########################
 
-function eachnode(fieldtype::FieldType, grid::Grid)
-    mappedarray(i -> dofindices(fieldtype, grid, i), get_nodeindices(grid))
+function eachnode(field::AbstractField, grid::Grid)
+    mappedarray(i -> dofindices(field, grid, i), get_nodeindices(grid))
 end
 
-function eachelement(fieldtype::FieldType, grid::Grid)
-    mappedarray(conn -> dofindices(fieldtype, grid, conn), get_connectivities(grid))
+function eachelement(field::AbstractField, grid::Grid)
+    mappedarray(conn -> dofindices(field, grid, conn), get_connectivities(grid))
 end
 
 #################
@@ -229,70 +229,70 @@ end
     end
 end
 
-function create_array(::Type{T}, ft1::FieldType, ft2::FieldType, grid::Grid) where {T}
-    m = num_dofs(ft1, grid)
-    n = num_dofs(ft2, grid)
-    sizehint = num_elementdofs(ft1, grid) * num_elementdofs(ft2, grid) * num_elements(grid)
+function create_array(::Type{T}, field1::AbstractField, field2::AbstractField, grid::Grid) where {T}
+    m = num_dofs(field1, grid)
+    n = num_dofs(field2, grid)
+    sizehint = num_elementdofs(field1, grid) * num_elementdofs(field2, grid) * num_elements(grid)
     SparseMatrixCOO{T}(m, n; sizehint)
 end
-function create_array(::Type{T}, ft::FieldType, grid::Grid) where {T}
-    n = num_dofs(ft, grid)
+function create_array(::Type{T}, field::AbstractField, grid::Grid) where {T}
+    n = num_dofs(field, grid)
     zeros(T, n)
 end
 
 ## infer_integeltype
-function infer_integeltype(f, ft1::FieldType, ft2::FieldType, grid::Grid)
+function infer_integeltype(f, field1::AbstractField, field2::AbstractField, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integeltype(f′, typeof(ft1), typeof(ft2), typeof(get_element(grid)))
+    _infer_integeltype(f′, typeof(field1), typeof(field2), typeof(get_element(grid)))
 end
-function infer_integeltype(f, ft::FieldType, grid::Grid)
+function infer_integeltype(f, field::AbstractField, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integeltype(f′, typeof(ft), typeof(get_element(grid)))
+    _infer_integeltype(f′, typeof(field), typeof(get_element(grid)))
 end
 
 ## integrate_lowered!
-function integrate_lowered!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
-    @assert size(A) == (num_dofs(ft1, grid), num_dofs(ft2, grid))
+function integrate_lowered!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, grid::Grid; zeroinit::Bool = true)
+    @assert size(A) == (num_dofs(field1, grid), num_dofs(field2, grid))
     zeroinit && fillzero!(A)
     element = get_element(grid)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_allnodes(grid)[conn])
         Ke = f(eltindex, element)
-        dofs1 = dofindices(ft1, grid, conn)
-        dofs2 = dofindices(ft2, grid, conn)
+        dofs1 = dofindices(field1, grid, conn)
+        dofs2 = dofindices(field2, grid, conn)
         add!(A, dofs1, dofs2, Ke)
     end
     A
 end
-function integrate_lowered!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
-    @assert length(F) == num_dofs(ft, grid)
+function integrate_lowered!(f, F::AbstractVector, field::AbstractField, grid::Grid; zeroinit::Bool = true)
+    @assert length(F) == num_dofs(field, grid)
     zeroinit && fillzero!(F)
     element = get_element(grid)
     for (eltindex, conn) in enumerate(get_connectivities(grid))
         update!(element, get_allnodes(grid)[conn])
         Fe = f(eltindex, element)
-        dofs = dofindices(ft, grid, conn)
+        dofs = dofindices(field, grid, conn)
         add!(F, dofs, Fe)
     end
     F
 end
 
 ## integrate!
-function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, grid::Grid; zeroinit::Bool = true)
-    Ke = create_array(eltype(A), ft1, ft2, get_element(grid))
-    integrate_lowered!(A, ft1, ft2, grid; zeroinit) do eltindex, element
+function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, grid::Grid; zeroinit::Bool = true)
+    Ke = create_array(eltype(A), field1, field2, get_element(grid))
+    integrate_lowered!(A, field1, field2, grid; zeroinit) do eltindex, element
         f′ = convert_integrate_function(f, eltindex)
         fillzero!(Ke)
-        integrate!(f′, Ke, ft1, ft2, element)
+        integrate!(f′, Ke, field1, field2, element)
         Ke
     end
 end
-function integrate!(f, F::AbstractVector, ft::FieldType, grid::Grid; zeroinit::Bool = true)
-    Fe = create_array(eltype(F), ft, get_element(grid))
-    integrate_lowered!(F, ft, grid; zeroinit) do eltindex, element
+function integrate!(f, F::AbstractVector, field::AbstractField, grid::Grid; zeroinit::Bool = true)
+    Fe = create_array(eltype(F), field, get_element(grid))
+    integrate_lowered!(F, field, grid; zeroinit) do eltindex, element
         f′ = convert_integrate_function(f, eltindex)
         fillzero!(Fe)
-        integrate!(f′, Fe, ft, element)
+        integrate!(f′, Fe, field, element)
         Fe
     end
 end

@@ -106,7 +106,7 @@ get_local_coordinates(elt::SingleElement{T}) where {T} = get_local_coordinates(T
 quadpoints(elt::SingleElement{T}) where {T} = quadpoints(T, get_shape_qr(elt))
 quadweights(elt::SingleElement{T}) where {T} = quadweights(T, get_shape_qr(elt))
 
-dofindices(ftype::FieldType, element::SingleElement, I) = dofindices(ftype, Val(get_dimension(element)), I)
+dofindices(field::AbstractField, element::SingleElement, I) = dofindices(field, Val(get_dimension(element)), I)
 
 ###############
 # interpolate #
@@ -147,22 +147,22 @@ interpolate(::VectorField, element::SingleElement{T, dim}, uᵢ::AbstractVector{
 # integrate #
 #############
 
-function create_array(::Type{T}, ft1::FieldType, ft2::FieldType, element::SingleElement) where {T}
-    m = num_dofs(ft1, element)
-    n = num_dofs(ft2, element)
+function create_array(::Type{T}, field1::AbstractField, field2::AbstractField, element::SingleElement) where {T}
+    m = num_dofs(field1, element)
+    n = num_dofs(field2, element)
     zeros(T, m, n)
 end
-function create_array(::Type{T}, ft::FieldType, element::SingleElement) where {T}
-    n = num_dofs(ft, element)
+function create_array(::Type{T}, field::AbstractField, element::SingleElement) where {T}
+    n = num_dofs(field, element)
     zeros(T, n)
 end
 
 # infer_integeltype
 infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
 @pure _mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
-@pure function _infer_integeltype(f, ::Type{FT1}, ::Type{FT2}, ::Type{Elt}) where {FT1, FT2, T, Elt <: BodyElement{T}}
-    Tv = eltype(Base._return_type(shape_values, Tuple{FT1, Elt, Int}))
-    Tu = eltype(Base._return_type(shape_values, Tuple{FT2, Elt, Int}))
+@pure function _infer_integeltype(f, ::Type{Fld1}, ::Type{Fld2}, ::Type{Elt}) where {Fld1, Fld2, T, Elt <: BodyElement{T}}
+    Tv = eltype(Base._return_type(shape_values, Tuple{Fld1, Elt, Int}))
+    Tu = eltype(Base._return_type(shape_values, Tuple{Fld2, Elt, Int}))
     Args = Tuple{Int, Tv, Tu}
     ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
@@ -171,8 +171,8 @@ infer_integeltype(f, args...) = _infer_integeltype(f, map(typeof, args)...)
     end
     ElType
 end
-@pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, Elt <: BodyElement{T}}
-    Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
+@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElement{T}}
+    Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
@@ -181,8 +181,8 @@ end
     end
     ElType
 end
-@pure function _infer_integeltype(f, ::Type{FT}, ::Type{Elt}) where {FT, T, dim, Elt <: FaceElement{T, dim}}
-    Tv = eltype(Base._return_type(shape_values, Tuple{FT, Elt, Int}))
+@pure function _infer_integeltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, dim, Elt <: FaceElement{T, dim}}
+    Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Vec{dim, T}, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
@@ -212,26 +212,26 @@ function integrate(f, element::SingleElement)
 end
 
 ## integrate!
-function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::SingleElement)
+function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, element::SingleElement)
     for qp in 1:num_quadpoints(element)
-        integrate!(f, A, ft1, ft2, element, qp)
+        integrate!(f, A, field1, field2, element, qp)
     end
     A
 end
-function integrate!(f, A::AbstractVector, ft::FieldType, element::SingleElement)
+function integrate!(f, A::AbstractVector, field::AbstractField, element::SingleElement)
     for qp in 1:num_quadpoints(element)
-        integrate!(f, A, ft, element, qp)
+        integrate!(f, A, field, element, qp)
     end
     A
 end
 
 ## integrate! at each quadrature point
 # BodyElement
-function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, element::BodyElement, qp::Int)
+function integrate!(f, A::AbstractMatrix, field1::AbstractField, field2::AbstractField, element::BodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
-        v = shape_values(ft1, element, qp)
-        u = shape_values(ft2, element, qp)
+        v = shape_values(field1, element, qp)
+        u = shape_values(field2, element, qp)
         @assert size(A) == (length(v), length(u))
         for j in 1:length(u)
             @simd for i in 1:length(v)
@@ -241,10 +241,10 @@ function integrate!(f, A::AbstractMatrix, ft1::FieldType, ft2::FieldType, elemen
     end
     A
 end
-function integrate!(f, A::AbstractVector, ft::FieldType, element::BodyElement, qp::Int)
+function integrate!(f, A::AbstractVector, field::AbstractField, element::BodyElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
-        v = shape_values(ft, element, qp)
+        v = shape_values(field, element, qp)
         @assert length(A) == length(v)
         @simd for i in 1:length(v)
             A[i] += f(qp, v[i]) * element.detJdΩ[qp]
@@ -254,10 +254,10 @@ function integrate!(f, A::AbstractVector, ft::FieldType, element::BodyElement, q
 end
 
 # FaceElement
-function integrate!(f, A::AbstractVector, ft::FieldType, element::FaceElement, qp::Int)
+function integrate!(f, A::AbstractVector, field::AbstractField, element::FaceElement, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
-        v = shape_values(ft, element, qp)
+        v = shape_values(field, element, qp)
         @assert length(A) == length(v)
         @simd for i in 1:length(v)
             A[i] += f(qp, element.normal[qp], v[i]) * element.detJdΩ[qp]
@@ -299,13 +299,13 @@ end
     end
 end
 
-function shape_values(ft::FieldType, element::BodyElement, qp::Int)
+function shape_values(field::AbstractField, element::BodyElement, qp::Int)
     @_propagate_inbounds_meta
     dim = get_dimension(element)
-    map(dual_gradient, shape_values(ft, Val(dim), element.N[qp]), shape_gradients(ft, Val(dim), element.dNdx[qp]))
+    map(dual_gradient, shape_values(field, Val(dim), element.N[qp]), shape_gradients(field, Val(dim), element.dNdx[qp]))
 end
-function shape_values(ft::FieldType, element::FaceElement, qp::Int)
+function shape_values(field::AbstractField, element::FaceElement, qp::Int)
     @_propagate_inbounds_meta
     dim = get_dimension(element)
-    shape_values(ft, Val(dim), element.N[qp])
+    shape_values(field, Val(dim), element.N[qp])
 end

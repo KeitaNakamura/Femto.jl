@@ -69,9 +69,9 @@ export
 
 const Index{L} = SVector{L, Int}
 
-abstract type FieldType end
-struct ScalarField <: FieldType end
-struct VectorField <: FieldType end
+abstract type AbstractField end
+struct ScalarField <: AbstractField end
+struct VectorField <: AbstractField end
 const Sf = ScalarField
 const Vf = VectorField
 
