@@ -1,5 +1,5 @@
 # shape must be unique in grid
-struct Grid{T, dim, Elt <: AbstractElement{T, dim}, L}
+struct Grid{T, dim, Elt <: Element{T, dim}, L}
     element::Elt
     nodes::Vector{Vec{dim, T}}
     connectivities::Vector{Index{L}}

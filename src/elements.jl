@@ -1,16 +1,21 @@
-abstract type AbstractElement{T, dim} end
+abstract type Element{T, dim} end
 
-Element(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = SingleBodyElement(T, shape, shape_qr)
+# core constructors
+Element{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim} = SingleBodyElement{T}(shape, shape_qr)
+Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim} = SingleBodyElement{T}(shape, shape_qr)
+Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, dim, shape_dim} = SingleFaceElement{T, dim}(shape, shape_qr)
+
+Element(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = Element{T}(shape, shape_qr)
 Element(shape::Shape, shape_qr::Shape = shape) = Element(Float64, shape, shape_qr)
 
-FaceElement(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = SingleFaceElement(T, shape, shape_qr)
+FaceElement(::Type{T}, shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, shape_dim} = SingleFaceElement{T, shape_dim+1}(shape, shape_qr)
 FaceElement(shape::Shape, shape_qr::Shape = shape) = FaceElement(Float64, shape, shape_qr)
 
 #################
 # SingleElement #
 #################
 
-abstract type SingleElement{T, dim} <: AbstractElement{T, dim} end
+abstract type SingleElement{T, dim} <: Element{T, dim} end
 
 get_shape(elt::SingleElement) = elt.shape
 get_shape_qr(elt::SingleElement) = elt.shape_qr
@@ -39,7 +44,7 @@ struct SingleBodyElement{T, dim, S <: Shape{dim}, Sqr <: Shape{dim}, L} <: Singl
     detJdΩ::Vector{T}
 end
 
-function SingleBodyElement(::Type{T}, shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
+function SingleBodyElement{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim}
     L = num_nodes(shape)
     n = num_quadpoints(shape_qr)
     N = zeros(SVector{L, T}, n)
@@ -74,8 +79,8 @@ struct SingleFaceElement{T, dim, shape_dim, S <: Shape{shape_dim}, Sqr <: Shape{
     detJdΩ::Vector{T}
 end
 
-function SingleFaceElement(::Type{T}, shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, shape_dim}
-    dim = shape_dim + 1
+function SingleFaceElement{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, dim, shape_dim}
+    @assert dim ≥ shape_dim
     L = num_nodes(shape)
     n = num_quadpoints(shape_qr)
     N = zeros(SVector{L, T}, n)
