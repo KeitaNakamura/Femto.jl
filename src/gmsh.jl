@@ -57,14 +57,24 @@ function from_gmsh(gmshfile::GmshReader.GmshFile)
     dim = gmshfile.nodeset.dim
     # nodes
     nodes = from_gmsh(gmshfile.nodeset)
-    # elements
-    Dict{String, Grid{Float64, dim}}(map(collect(gmshfile.physicalgroups)) do (name, phygroup)
+    # physicalgroups
+    physicalgroups = Dict(Iterators.map(gmshfile.physicalgroups) do (name, phygroup)
         nodeindices, shape, connectivities = from_gmsh(phygroup)
-        name => Grid(shape, nodes, connectivities, nodeindices)
+        name => (; nodeindices, shape, connectivities)
+    end)
+    bodies = Dict(Iterators.filter(p -> get_dimension(p.second.shape) == dim, physicalgroups))
+    faces = Dict(Iterators.filter(p -> get_dimension(p.second.shape) != dim, physicalgroups))
+    nodes, bodies, faces
+end
+
+function create_gridset(nodes::Vector{<: Vec{dim}}, phygroup::Dict) where {dim}
+    Dict{String, Grid{Float64, dim}}(Iterators.map(phygroup) do (name, group)
+        name => Grid(nodes, group.shape, group.connectivities, group.nodeindices)
     end)
 end
 
 function readgmsh(filename::String)
     file = GmshReader.readgmsh(filename; fixsurface = true)
-    from_gmsh(file)
+    nodes, bodies, faces = from_gmsh(file)
+    merge(create_gridset(nodes, bodies), create_gridset(nodes, faces))
 end
