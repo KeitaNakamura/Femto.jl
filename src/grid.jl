@@ -1,22 +1,24 @@
-# shape must be unique in grid
 struct Grid{T, dim, Elt <: Element{T, dim}, L}
-    element::Elt
+    # unique in gridset
     nodes::Vector{Vec{dim, T}}
+    # body/face element
+    element::Elt
     connectivities::Vector{Index{L}}
     nodeindices::Vector{Int}
 end
 
-function Grid(shape::Shape{dim}, nodes::Vector{Vec{dim, T}}, connectivities::Vector{<: Index}, nodeindices::Vector{Int}) where {dim, T}
-    element = Element(T, shape)
-    Grid(element, nodes, connectivities, nodeindices)
+function Grid(nodes::Vector{Vec{dim, T}}, shape::Shape, connectivities::Vector{Index{L}}, nodeindices::Vector{Int}) where {dim, T, L}
+    @assert num_nodes(shape) ≤ L
+    element = Element{T, dim}(shape)
+    Grid(nodes, element, connectivities, nodeindices)
 end
-function Grid(shape::Shape{shape_dim}, nodes::Vector{Vec{dim, T}}, connectivities::Vector{<: Index}, nodeindices::Vector{Int}) where {shape_dim, dim, T}
-    @assert shape_dim + 1 == dim
-    element = FaceElement(T, shape)
-    Grid(element, nodes, connectivities, nodeindices)
+function Grid(nodes::Vector{<: Vec}, shape::Shape, connectivities::Vector{<: Index})
+    Grid(nodes, shape, connectivities, collect(1:length(nodes)))
 end
-function Grid(shape::Shape, nodes::Vector{<: Vec}, connectivities::Vector{<: Index})
-    Grid(shape, nodes, connectivities, collect(1:length(nodes)))
+
+# core fields in grid are inherited
+function Grid(grid::Grid, shape::Shape, connectivities::Vector{<: Index}, nodeindices::Vector{Int})
+    Grid(get_allnodes(grid), shape, connectivities, nodeindices)
 end
 
 #########
@@ -141,8 +143,9 @@ grid_args(axes::Vararg{AbstractVector, dim}) where {dim} = grid_args(default_sha
 generate_grid(args...) = _generate_grid(grid_args(args...)...)
 function _generate_grid(::Type{T}, shape::Shape{shape_dim}, axes::Vararg{AbstractVector, dim}) where {T, dim, shape_dim}
     mesh = StructuredMesh(axes, get_order(shape))
+    nodes = vec(collect(Vec{dim, T}, mesh))
     connectivities = generate_connectivities(shape, LinearIndices(mesh))
-    Grid(shape, vec(collect(Vec{dim, T}, mesh)), connectivities)
+    Grid(nodes, shape, connectivities)
 end
 
 ####################
@@ -178,13 +181,14 @@ function _generate_gridset(::Type{T}, shape::Shape{2}, axes::Vararg{AbstractVect
     boundary = mapreduce(vec, vcat, (left, right, bottom, top))
 
     allnodes = vec(collect(Vec{2, T}, mesh))
+    grid = Grid(allnodes, shape, main)
     Dict{String, Grid{T, 2}}(
-        "main"   => Grid(shape, allnodes, main),
-        "left"   => Grid(bshape, allnodes, left, sort!(nodeinds_left)),
-        "right"  => Grid(bshape, allnodes, right, sort!(nodeinds_right)),
-        "bottom" => Grid(bshape, allnodes, bottom, sort!(nodeinds_bottom)),
-        "top"    => Grid(bshape, allnodes, top, sort!(nodeinds_top)),
-        "boundary" => Grid(bshape, allnodes, boundary, sort!(nodeinds_boundary))
+        "main"   => grid,
+        "left"   => Grid(grid, bshape, left, sort!(nodeinds_left)),
+        "right"  => Grid(grid, bshape, right, sort!(nodeinds_right)),
+        "bottom" => Grid(grid, bshape, bottom, sort!(nodeinds_bottom)),
+        "top"    => Grid(grid, bshape, top, sort!(nodeinds_top)),
+        "boundary" => Grid(grid, bshape, boundary, sort!(nodeinds_boundary))
     )
 end
 function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVector, 3}) where {T}
@@ -212,15 +216,16 @@ function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVect
     boundary = [left; right; bottom; top; front; back]
 
     allnodes = vec(collect(Vec{3, T}, mesh))
+    grid = Grid(allnodes, shape, main)
     Dict{String, Grid{T, 3}}(
-        "main"   => Grid(shape, allnodes, main),
-        "left"   => Grid(bshape, allnodes, left, sort!(vec(nodeinds_left))),
-        "right"  => Grid(bshape, allnodes, right, sort!(vec(nodeinds_right))),
-        "bottom" => Grid(bshape, allnodes, bottom, sort!(vec(nodeinds_bottom))),
-        "top"    => Grid(bshape, allnodes, top, sort!(vec(nodeinds_top))),
-        "front"  => Grid(bshape, allnodes, front, sort!(vec(nodeinds_front))),
-        "back"   => Grid(bshape, allnodes, back, sort!(vec(nodeinds_back))),
-        "boundary" => Grid(bshape, allnodes, boundary, sort!(vec(nodeinds_boundary)))
+        "main"   => grid,
+        "left"   => Grid(grid, bshape, left, sort!(vec(nodeinds_left))),
+        "right"  => Grid(grid, bshape, right, sort!(vec(nodeinds_right))),
+        "bottom" => Grid(grid, bshape, bottom, sort!(vec(nodeinds_bottom))),
+        "top"    => Grid(grid, bshape, top, sort!(vec(nodeinds_top))),
+        "front"  => Grid(grid, bshape, front, sort!(vec(nodeinds_front))),
+        "back"   => Grid(grid, bshape, back, sort!(vec(nodeinds_back))),
+        "boundary" => Grid(grid, bshape, boundary, sort!(vec(nodeinds_boundary)))
     )
 end
 
