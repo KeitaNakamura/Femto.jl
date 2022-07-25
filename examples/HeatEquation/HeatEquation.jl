@@ -7,7 +7,7 @@ end
 function HeatEquation(gridset::Dict, dir::String = @__DIR__)
     grid = gridset["main"]
 
-    K = integrate((index,v,u) -> ∇(v) ⋅ ∇(u), Sf(), Sf(), grid)
+    K = integrate((index,v,u) -> ∇(v) ⋅ ∇(u), Sf(), grid)
     F = integrate((index,v) -> v, Sf(), grid)
 
     U = zeros(length(F))
