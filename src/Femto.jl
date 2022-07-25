@@ -34,6 +34,7 @@ export
     # Element
     Element,
     FaceElement,
+    SingleElement,
     SingleBodyElement,
     SingleFaceElement,
     update!,
@@ -51,6 +52,7 @@ export
     Tet10,
     # Grid
     Grid,
+    SingleGrid,
     num_allnodes,
     get_allnodes,
     get_connectivities,
@@ -71,8 +73,8 @@ export
 
 const Index{L} = SVector{L, Int}
 
-abstract type AbstractField end
-abstract type SingleField <: AbstractField end
+abstract type Field end
+abstract type SingleField <: Field end
 struct ScalarField <: SingleField end
 struct VectorField <: SingleField end
 const Sf = ScalarField
@@ -83,15 +85,14 @@ include("sparse.jl")
 include("utils.jl")
 
 include("shapes.jl")
-include("elements.jl")
-include("grid.jl")
+include("Elements/Element.jl")
+include("Elements/SingleElement.jl")
+include("Elements/common.jl")
+include("Grids/Grid.jl")
+include("Grids/SingleGrid.jl")
+include("Grids/common.jl")
+include("integration.jl")
 include("solve.jl")
-
-function integrate(f, args...)
-    T = infer_integeltype(f, args...)
-    A = create_array(T, args...)
-    integrate!(f, A, args...)
-end
 
 include("gmsh.jl")
 include("vtk.jl")

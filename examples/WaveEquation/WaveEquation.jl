@@ -27,7 +27,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
-        integrate!((i,v,u)->∇(v)⋅∇(u), K, Sf(), Sf(), grid)
+        integrate!((i,v,u)->∇(v)⋅∇(u), K, Sf(), grid)
         integrate!((i,v)->v, M, Sf(), grid) # lumped mass matrix
         if t < 0.2
             integrate!((i,v)->v, F, Sf(), source)

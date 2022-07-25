@@ -68,8 +68,8 @@ function from_gmsh(gmshfile::GmshReader.GmshFile)
 end
 
 function create_gridset(nodes::Vector{<: Vec{dim}}, phygroup::Dict) where {dim}
-    Dict{String, Grid{Float64, dim}}(Iterators.map(phygroup) do (name, group)
-        name => Grid(nodes, group.shape, group.connectivities, group.nodeindices)
+    Dict{String, SingleGrid{Float64, dim}}(Iterators.map(phygroup) do (name, group)
+        name => SingleGrid(nodes, group.shape, group.connectivities, group.nodeindices)
     end)
 end
 
