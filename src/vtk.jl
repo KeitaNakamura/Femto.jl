@@ -26,7 +26,8 @@ function WriteVTK.vtk_grid(filename::AbstractString, grid::Grid{T, dim}; kwargs.
     cells = MeshCell[]
     shape = get_shape(grid)
     celltype = to_vtk_celltype(shape)
-    for conn in get_connectivities(grid)
+    for eltindex in 1:num_elements(grid)
+        conn = get_connectivity(grid, eltindex)
         push!(cells, MeshCell(celltype, conn[to_vtk_connectivity(shape)]))
     end
     points = reshape(reinterpret(T, get_allnodes(grid)), (dim, num_allnodes(grid)))

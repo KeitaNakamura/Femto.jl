@@ -14,9 +14,11 @@ end
     SVector(ntuple(i->A[i,:], Val(N)))
 end
 
-@pure _get_lower_shapes(x::Tuple, shape::Shape) = _get_lower_shapes((shape, x...), lower_shape(shape))
+@pure _get_lower_shapes(x::Tuple, shape::Shape) = _get_lower_shapes((shape, x...), decrease_order(shape))
 @pure _get_lower_shapes(x::Tuple, ::Nothing) = x
 @pure get_lower_shapes(shape::Shape) = _get_lower_shapes((), shape)
+
+mixed(shapes::Shape...) = shapes
 
 ########
 # Line #
@@ -41,7 +43,7 @@ struct Line2 <: Line end
 @pure get_order(::Line2) = 1
 @pure num_nodes(::Line2) = 2
 @pure num_quadpoints(::Line2) = 1
-@pure lower_shape(::Line2) = nothing
+@pure decrease_order(::Line2) = nothing
 
 function get_local_coordinates(::Type{T}, ::Line2) where {T}
     SVector{2, Vec{1, T}}(
@@ -84,7 +86,7 @@ struct Line3 <: Line end
 @pure get_order(::Line3) = 2
 @pure num_nodes(::Line3) = 3
 @pure num_quadpoints(::Line3) = 2
-@pure lower_shape(::Line3) = Line2()
+@pure decrease_order(::Line3) = Line2()
 
 function get_local_coordinates(::Type{T}, ::Line3) where {T}
     SVector{3, Vec{1, T}}(
@@ -142,7 +144,7 @@ struct Quad4 <: Quad end
 @pure get_order(::Quad4) = 1
 @pure num_nodes(::Quad4) = 4
 @pure num_quadpoints(::Quad4) = 4
-@pure lower_shape(::Quad4) = nothing
+@pure decrease_order(::Quad4) = nothing
 
 function get_local_coordinates(::Type{T}, ::Quad4) where {T}
     SVector{4, Vec{2, T}}(
@@ -198,7 +200,7 @@ struct Quad9 <: Quad end
 @pure get_order(::Quad9) = 2
 @pure num_nodes(::Quad9) = 9
 @pure num_quadpoints(::Quad9) = 9
-@pure lower_shape(::Quad9) = Quad4()
+@pure decrease_order(::Quad9) = Quad4()
 
 function get_local_coordinates(::Type{T}, ::Quad9) where {T}
     SVector{9, Vec{2, T}}(
@@ -287,7 +289,7 @@ struct Hex8 <: Hex end
 @pure get_order(::Hex8) = 1
 @pure num_nodes(::Hex8) = 8
 @pure num_quadpoints(::Hex8) = 8
-@pure lower_shape(::Hex8) = nothing
+@pure decrease_order(::Hex8) = nothing
 
 function get_local_coordinates(::Type{T}, ::Hex8) where {T}
     SVector{8, Vec{3, T}}(
@@ -358,7 +360,7 @@ struct Hex27 <: Hex end
 @pure get_order(::Hex27) = 2
 @pure num_nodes(::Hex27) = 27
 @pure num_quadpoints(::Hex27) = 27
-@pure lower_shape(::Hex27) = Hex8()
+@pure decrease_order(::Hex27) = Hex8()
 
 function get_local_coordinates(::Type{T}, ::Hex27) where {T}
     SVector{27, Vec{3, T}}(
@@ -517,7 +519,7 @@ struct Tri3 <: Tri end
 @pure get_order(::Tri3) = 1
 @pure num_nodes(::Tri3) = 3
 @pure num_quadpoints(::Tri3) = 1
-@pure lower_shape(::Tri3) = nothing
+@pure decrease_order(::Tri3) = nothing
 
 function get_local_coordinates(::Type{T}, ::Tri3) where {T}
     SVector{3, Vec{2, T}}(
@@ -563,7 +565,7 @@ struct Tri6 <: Tri end
 @pure get_order(::Tri6) = 2
 @pure num_nodes(::Tri6) = 6
 @pure num_quadpoints(::Tri6) = 3
-@pure lower_shape(::Tri6) = Tri3()
+@pure decrease_order(::Tri6) = Tri3()
 
 function get_local_coordinates(::Type{T}, ::Tri6) where {T}
     SVector{6, Vec{2, T}}(
@@ -636,7 +638,7 @@ struct Tet4 <: Tet end
 @pure get_order(::Tet4) = 1
 @pure num_nodes(::Tet4) = 4
 @pure num_quadpoints(::Tet4) = 1
-@pure lower_shape(::Tet4) = nothing
+@pure decrease_order(::Tet4) = nothing
 
 function get_local_coordinates(::Type{T}, ::Tet4) where {T}
     SVector{4, Vec{3, T}}(
@@ -692,7 +694,7 @@ struct Tet10 <: Tet end
 @pure get_order(::Tet10) = 2
 @pure num_nodes(::Tet10) = 10
 @pure num_quadpoints(::Tet10) = 4
-@pure lower_shape(::Tet10) = Tet4()
+@pure decrease_order(::Tet10) = Tet4()
 
 function get_local_coordinates(::Type{T}, ::Tet10) where {T}
     SVector{10, Vec{3, T}}(

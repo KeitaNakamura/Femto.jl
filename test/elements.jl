@@ -178,3 +178,49 @@ end
         end
     end
 end
+
+@testset "MixedElement" begin
+    @testset "MixedBodyElement integration" begin
+        field = mixed(VectorField(), ScalarField())
+        element = Element(mixed(Quad9(), Quad4()))
+        f = (index, (v,q), (u,p)) -> ∇(v) ⊡ ∇(u) - (∇⋅v)*p + q*(∇⋅u) + q*p
+        # classical way
+        elt1 = Element(Quad9(), Quad9())
+        elt2 = Element(Quad4(), Quad9())
+        K = sum(1:Femto.num_quadpoints(elt1)) do qp
+            (dUdx1,dUdy1), (dUdx2,dUdy2), (dUdx3,dUdy3), (dUdx4,dUdy4), (dUdx5,dUdy5), (dUdx6,dUdy6), (dUdx7,dUdy7), (dUdx8,dUdy8), (dUdx9,dUdy9) = elt1.dNdx[qp]
+            P1, P2, P3, P4 = elt2.N[qp]
+            dudx = [dUdx1 0     dUdx2 0     dUdx3 0     dUdx4 0     dUdx5 0     dUdx6 0     dUdx7 0     dUdx8 0     dUdx9 0
+                    0     dUdy1 0     dUdy2 0     dUdy3 0     dUdy4 0     dUdy5 0     dUdy6 0     dUdy7 0     dUdy8 0     dUdy9
+                    dUdy1 0     dUdy2 0     dUdy3 0     dUdy4 0     dUdy5 0     dUdy6 0     dUdy7 0     dUdy8 0     dUdy9 0
+                    0     dUdx1 0     dUdx2 0     dUdx3 0     dUdx4 0     dUdx5 0     dUdx6 0     dUdx7 0     dUdx8 0     dUdx9]
+            dudx_v = [dUdx1 dUdy1 dUdx2 dUdy2 dUdx3 dUdy3 dUdx4 dUdy4 dUdx5 dUdy5 dUdx6 dUdy6 dUdx7 dUdy7 dUdx8 dUdy8 dUdx9 dUdy9]
+            p = [P1 P2 P3 P4]
+            dΩ = elt1.detJdΩ[qp]
+            [dudx'*dudx -dudx_v'*p
+             p'*dudx_v  p'*p] * dΩ
+        end
+        @test integrate(f, field, element) ≈ K
+    end
+    @testset "MixedFaceElement integration" begin
+        field = mixed(VectorField(), ScalarField())
+        element = FaceElement(mixed(Quad9(), Quad4()))
+        a = rand(Vec{3})
+        b = rand()
+        f = (index, normal, (v,q)) -> v⋅a + b*q
+        # classical way
+        elt1 = FaceElement(Quad9(), Quad9())
+        elt2 = FaceElement(Quad4(), Quad9())
+        F = sum(1:Femto.num_quadpoints(elt1)) do qp
+            U1, U2, U3, U4, U5, U6, U7, U8, U9 = elt1.N[qp]
+            P1, P2, P3, P4 = elt2.N[qp]
+            u = [U1 0  0  U2 0  0  U3 0  0  U4 0  0  U5 0  0  U6 0  0  U7 0  0  U8 0  0  U9 0  0
+                 0  U1 0  0  U2 0  0  U3 0  0  U4 0  0  U5 0  0  U6 0  0  U7 0  0  U8 0  0  U9 0
+                 0  0  U1 0  0  U2 0  0  U3 0  0  U4 0  0  U5 0  0  U6 0  0  U7 0  0  U8 0  0  U9]
+            p = [P1 P2 P3 P4]
+            dΩ = elt1.detJdΩ[qp]
+            vec(vcat(u' * Vector(a), p' * b)) * dΩ
+        end
+        @test integrate(f, field, element) ≈ F
+    end
+end

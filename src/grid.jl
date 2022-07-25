@@ -77,41 +77,117 @@ struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     end
 end
 
+function decrease_order(grid::Grid)
+    shape = decrease_order(get_shape(grid))
+    order = get_order(shape)
+    conns = map(get_connectivities(grid)) do conn
+        conn[SOneTo(num_nodes(shape))]
+    end
+    Grid(collect(get_allnodes(grid, order)), shape, conns, collect(get_nodeindices(grid, order)))
+end
+
 #########
 # utils #
 #########
 
+get_order(::SingleFieldNoOrder, grid::Grid) = get_order(get_shape(grid))
+get_order(field::SingleField, grid::Grid) = get_order(field)
+get_order(mixed::MixedField, grid::Grid) = maximum(fld -> get_order(fld, grid), get_singlefields(mixed))
+
 get_allnodes(grid::Grid) = grid.nodes
-get_allnodes(grid::Grid, order::Int) = get_allnodes(grid)[Block.(1:order)]
+function get_allnodes(grid::Grid, order::Int)
+    nodes = get_allnodes(grid)
+    inds = Block.(1:order)
+    @boundscheck checkbounds(Bool, nodes, inds) || error("order $order is not available in Grid with $(get_shape(grid))")
+    @inbounds view(nodes, inds)
+end
+get_allnodes(field::Field, grid::Grid) = get_allnodes(grid, get_order(field, grid))
+
 get_nodeindices(grid::Grid) = grid.nodeindices
-get_nodeindices(grid::Grid, order::Int) = get_nodeindices(grid)[Block.(1:order)]
+function get_nodeindices(grid::Grid, order::Int)
+    nodeinds = get_nodeindices(grid)
+    inds = Block.(1:order)
+    @boundscheck checkbounds(Bool, nodeinds, inds) || error("order $order is not available in Grid with $(get_shape(grid))")
+    @inbounds view(nodeinds, inds)
+end
+get_nodeindices(field::Field, grid::Grid) = get_nodeindices(grid, get_order(field, grid))
+
 get_connectivities(grid::Grid) = grid.connectivities
+function _get_connectivity(shape::Shape, grid::Grid, i::Int)
+    conns = get_connectivities(grid)
+    @boundscheck checkbounds(conns, i)
+    @inbounds conn = conns[i]
+    conn[SOneTo(num_nodes(shape))]
+end
+function get_connectivity(grid::Grid, i::Int)
+    @_propagate_inbounds_meta
+    _get_connectivity(get_shape(grid), grid, i)
+end
+function get_connectivity(field::SingleField, grid::Grid, i::Int)
+    @_propagate_inbounds_meta
+    _get_connectivity(get_shape(field, grid), grid, i)
+end
+function get_connectivity(mixed::MixedField, grid::Grid, i::Int)
+    field = argmax(fld -> get_order(fld, grid), get_singlefields(mixed))
+    get_connectivity(field, grid, i)
+end
+
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
+
 get_shape(grid::Grid) = grid.shape
+get_shape(field::Field, grid::Grid) = get_available_shapes(grid)[get_order(field, grid)]
+get_available_shapes(grid::Grid) = get_lower_shapes(get_shape(grid))
+
 create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
-get_elementtype(grid::Grid) = Base._return_type(create_element, Tuple{typeof(grid)})
+create_element(field::SingleField, grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(field, grid))
+create_element(mixed::MixedField{N}, grid::Grid{T, dim}) where {N, T, dim} = Element{T, dim}(ntuple(i -> get_shape(get_singlefields(mixed)[i], grid), Val(N)))
+get_elementtype(field::Field, grid::Grid) = Base._return_type(create_element, typeof((field, grid)))
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
+num_allnodes(field::Field, grid::Grid) = length(get_allnodes(field, grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
-num_dofs(::ScalarField, grid::Grid) = num_allnodes(grid)
-num_dofs(::VectorField, grid::Grid) = num_allnodes(grid) * get_dimension(grid)
+
+num_dofs(field::ScalarField, grid::Grid) = num_allnodes(field, grid)
+num_dofs(field::VectorField, grid::Grid) = num_allnodes(field, grid) * get_dimension(grid)
+num_dofs(mixed::MixedField, grid::Grid) = sum(field -> num_dofs(field, grid), get_singlefields(mixed))
 
 ########
 # dofs #
 ########
 
-function nodedofs(field::SingleField, grid::Grid)
-    mappedarray(i -> dofindices(field, Val(get_dimension(grid)), i), get_nodeindices(grid))
+function get_dofs(field::SingleField, grid::Grid; offset::Int = 0)
+    convert(Vector{Int}, get_nodedofs(field, grid; offset))
+end
+function get_dofs(field::VectorField, grid::Grid; offset::Int = 0)
+    reduce(vcat, get_nodedofs(field, grid; offset))
 end
 
-function elementdofs(field::SingleField, grid::Grid, i::Int)
-    conns = get_connectivities(grid)
-    @boundscheck checkbounds(conns, i)
-    @inbounds conn = conns[i]
-    dofindices(field, Val(get_dimension(grid)), conn)
+function get_nodedofs(field::SingleField, grid::Grid; offset::Int = 0)
+    nodeinds = get_nodeindices(field, grid)
+    map(i -> dofindices(field, Val(get_dimension(grid)), i) .+ offset, nodeinds)
 end
-function elementdofs(field::SingleField, grid::Grid)
-    mappedarray(i -> elementdofs(field, grid, i), 1:num_elements(grid))
+
+for func in (:get_dofs, :get_nodedofs)
+    @eval function $func(mixed::MixedField, grid::Grid)
+        count = Ref(0)
+        map(get_singlefields(mixed)) do field
+            offset = count[]
+            count[] += num_dofs(field, grid)
+            $func(field, grid; offset)
+        end
+    end
+end
+
+function get_elementdofs(field::SingleField, grid::Grid, i::Int; offset::Int = 0)
+    dofindices(field, Val(get_dimension(grid)), get_connectivity(field, grid, i)) .+ offset
+end
+function get_elementdofs(mixed::MixedField, grid::Grid, i::Int)
+    count = Ref(0)
+    reduce(vcat, map(get_singlefields(mixed)) do field
+        offset = count[]
+        count[] += num_dofs(field, grid)
+        get_elementdofs(field, grid, i; offset)
+    end)
 end
 
 #################
@@ -244,7 +320,7 @@ function _generate_gridset(::Type{T}, shape::Shape{2}, axes::Vararg{AbstractVect
         "right"  => DomainInfo(bshape, right, sort!(nodeinds_right)),
         "bottom" => DomainInfo(bshape, bottom, sort!(nodeinds_bottom)),
         "top"    => DomainInfo(bshape, top, sort!(nodeinds_top)),
-        "boundary" => DomainInfo(bshape, boundary, sort!(nodeinds_boundary))
+        "boundary" => DomainInfo(bshape, boundary, unique!(sort!(nodeinds_boundary)))
     )
     generate_gridset(allnodes, domains)
 end
@@ -281,7 +357,7 @@ function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVect
         "top"    => DomainInfo(bshape, top, sort!(vec(nodeinds_top))),
         "front"  => DomainInfo(bshape, front, sort!(vec(nodeinds_front))),
         "back"   => DomainInfo(bshape, back, sort!(vec(nodeinds_back))),
-        "boundary" => DomainInfo(bshape, boundary, sort!(vec(nodeinds_boundary)))
+        "boundary" => DomainInfo(bshape, boundary, unique!(sort!(vec(nodeinds_boundary))))
     )
     generate_gridset(allnodes, domains)
 end
@@ -319,7 +395,7 @@ end
 
 function create_matrix(::Type{T}, field::Field, grid::Grid) where {T}
     m = n = num_dofs(field, grid)
-    element = create_element(grid)
+    element = create_element(field, grid)
     sizehint = num_dofs(field, element)^2 * num_elements(grid)
     SparseMatrixCOO{T}(m, n; sizehint)
 end
@@ -331,23 +407,23 @@ end
 ## infer
 function infer_integrate_matrix_eltype(f, field::Field, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integrate_matrix_eltype(f′, typeof(field), get_elementtype(grid))
+    _infer_integrate_matrix_eltype(f′, typeof(field), get_elementtype(field, grid))
 end
 function infer_integrate_vector_eltype(f, field::Field, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integrate_vector_eltype(f′, typeof(field), get_elementtype(grid))
+    _infer_integrate_vector_eltype(f′, typeof(field), get_elementtype(field, grid))
 end
 
 ## integrate_lowered!
 function integrate_lowered!(f, A::AbstractArray, field::Field, grid::Grid; zeroinit::Bool = true)
     @assert all(==(num_dofs(field, grid)), size(A))
     zeroinit && fillzero!(A)
-    element = create_element(grid)
+    element = create_element(field, grid)
     for eltindex in 1:num_elements(grid)
-        conn = get_connectivities(grid)[eltindex]
+        conn = get_connectivity(field, grid, eltindex)
         update!(element, get_allnodes(grid)[conn])
         Ke = f(eltindex, element)
-        dofs = elementdofs(field, grid, eltindex)
+        dofs = get_elementdofs(field, grid, eltindex)
         add!(A, dofs, Ke)
     end
     A
@@ -356,7 +432,7 @@ end
 ## integrate!
 for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractVector, :create_vector))
     @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; zeroinit::Bool = true)
-        Ke = $create_array(eltype(A), field, create_element(grid))
+        Ke = $create_array(eltype(A), field, create_element(field, grid))
         integrate_lowered!(A, field, grid; zeroinit) do eltindex, element
             f′ = convert_integrate_function(f, eltindex)
             fillzero!(Ke)
@@ -368,7 +444,7 @@ end
 
 # integrate
 function integrate(f, field::Field, grid::Grid)
-    F = integrate_function(f, get_elementtype(grid))
+    F = integrate_function(f, get_elementtype(field, grid))
     F(f, field, grid)
 end
 
@@ -384,4 +460,24 @@ function generate_elementstate(::Type{ElementState}, grid::Grid) where {ElementS
         elementstate.x .= interpolate(grid, get_allnodes(grid))
     end
     elementstate
+end
+
+##############
+# gridvalues #
+##############
+
+grideltype(::Type{T}, ::ScalarField, ::Grid) where {T <: Real} = T
+grideltype(::Type{T}, ::VectorField, grid::Grid) where {T <: Real} = Vec{get_dimension(grid), T}
+
+function gridvalues(U::AbstractVector, field::SingleField, grid::Grid)
+    n = num_dofs(field, grid)
+    @assert length(U) == n
+    ElType = grideltype(eltype(U), field, grid)
+    reinterpret(ElType, U)
+end
+
+function gridvalues(U::AbstractVector, mixed::MixedField{N}, grid::Grid) where {N}
+    map(get_singlefields(mixed), get_dofs(mixed, grid)) do field, dofs
+        gridvalues(view(U, dofs), field, grid)
+    end
 end

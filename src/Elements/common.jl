@@ -1,5 +1,5 @@
-const BodyElementLike{T, dim} = Union{SingleBodyElement{T, dim}}
-const FaceElementLike{T, dim} = Union{SingleFaceElement{T, dim}}
+const BodyElementLike{T, dim} = Union{SingleBodyElement{T, dim}, MixedBodyElement{T, dim}}
+const FaceElementLike{T, dim} = Union{SingleFaceElement{T, dim}, MixedFaceElement{T, dim}}
 
 ##########
 # common #
@@ -115,7 +115,7 @@ function integrate!(f, A::AbstractVector, field::Field, element::FaceElementLike
         v = shape_values(field, element, qp)
         @assert length(A) == length(v)
         @simd for i in 1:length(v)
-            A[i] += f(qp, element.normal[qp], v[i]) * get_detJdΩ(element, qp)
+            A[i] += f(qp, get_normal(element, qp), v[i]) * get_detJdΩ(element, qp)
         end
     end
     A

@@ -1,13 +1,3 @@
-## dofindices
-# ScalarField
-dofindices(::ScalarField, ::Val, nodeindex::Int) = nodeindex
-dofindices(::ScalarField, ::Val, conn::Index) = conn
-# VectorField
-dofindices(::VectorField, ::Val{dim}, nodeindex::Int) where {dim} = Index(ntuple(d -> dim*(nodeindex-1) + d, Val(dim)))
-function dofindices(fieldtype::VectorField, ::Val{dim}, conn::Index{L}) where {dim, L}
-    Index{dim*L}(Iterators.flatten(map(i -> dofindices(fieldtype, Val(dim), i), conn))...)
-end
-
 # zero_recursive
 zero_recursive(::Type{Array{T, N}}) where {T, N} = Array{T, N}(undef, nfill(0, Val(N)))
 @generated function zero_recursive(::Type{T}) where {T}
