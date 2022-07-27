@@ -1,6 +1,6 @@
 using Femto
 
-function HeatEquation(filename = joinpath(@__DIR__, "model2d.msh"))
+function HeatEquation(filename = joinpath(@__DIR__, "model2d_1.msh"))
     HeatEquation(readgmsh(filename), dirname(filename))
 end
 
