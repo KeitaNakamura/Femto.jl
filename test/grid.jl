@@ -93,7 +93,7 @@ end
         index::Int
     end
     grid = generate_grid(0:2, 0:3)
-    element = Femto.get_element(grid)
+    element = Femto.create_element(grid)
     eltstate = @inferred generate_elementstate(ElementState, grid)
     @test size(eltstate) == (Femto.num_quadpoints(element), Femto.num_elements(grid))
     X = @inferred interpolate(grid, Femto.get_allnodes(grid))

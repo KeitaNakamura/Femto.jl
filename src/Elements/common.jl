@@ -122,18 +122,18 @@ function integrate!(f, A::AbstractVector, field::Field, element::FaceElementLike
 end
 
 function integrate(f, field::Field, element::Element)
-    F = integrate_function(f, element)
+    F = integrate_function(f, typeof(element))
     F(f, field, element)
 end
 
-function integrate_function(f, element::Element)
+function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
     nargs = first(methods(f)).nargs - 1
     # integrate
-    element isa BodyElementLike && nargs == 3 && return integrate_matrix
-    element isa BodyElementLike && nargs == 2 && return integrate_vector
-    element isa FaceElementLike && nargs == 3 && return integrate_vector
+    Elt <: BodyElementLike && nargs == 3 && return integrate_matrix
+    Elt <: BodyElementLike && nargs == 2 && return integrate_vector
+    Elt <: FaceElementLike && nargs == 3 && return integrate_vector
     # errors
-    element isa BodyElementLike && error("wrong number of arguments in `integrate`, use `(index, v, u)` for matrix or `(index, v)` for vector")
-    element isa FaceElementLike && error("wrong number of arguments in `integrate`, use `(index, normal, v)`")
+    Elt <: BodyElementLike && error("wrong number of arguments in `integrate`, use `(index, v, u)` for matrix or `(index, v)` for vector")
+    Elt <: FaceElementLike && error("wrong number of arguments in `integrate`, use `(index, normal, v)`")
     error("unreachable")
 end

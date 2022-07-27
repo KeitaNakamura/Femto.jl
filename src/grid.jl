@@ -1,15 +1,14 @@
-struct Grid{T, dim, Elt <: Element{T, dim}, L}
+struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     # unique in gridset
     nodes::Vector{Vec{dim, T}}
     # body/face element
-    element::Elt
+    shape::S
     connectivities::Vector{Index{L}}
     nodeindices::Vector{Int}
 end
 
 function Grid(nodes::Vector{Vec{dim, T}}, shape::Shape, connectivities::Vector{Index{L}}, nodeindices::Vector{Int} = collect(1:length(nodes))) where {dim, T, L}
     @assert num_nodes(shape) ≤ L
-    element = Element{T, dim}(shape)
     Grid(nodes, element, connectivities, nodeindices)
 end
 
@@ -26,15 +25,9 @@ get_allnodes(grid::Grid) = grid.nodes
 get_nodeindices(grid::Grid) = grid.nodeindices
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
-get_element(grid::Grid) = grid.element
-function get_element(grid::Grid, i::Int)
-    @boundscheck 1 ≤ i ≤ num_elements(grid)
-    @inbounds conn = get_connectivities(grid)[i]
-    element = get_element(grid)
-    update!(element, get_allnodes(grid)[conn])
-    element
-end
-get_shape(grid::Grid) = get_shape(get_element(grid))
+get_shape(grid::Grid) = grid.shape
+create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
+get_elementtype(grid::Grid) = Base._return_type(create_element, Tuple{typeof(grid)})
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
 num_elements(grid::Grid) = length(get_connectivities(grid))
@@ -233,11 +226,12 @@ end
 # returned mappedarray's size is the same as elementstate matrix
 function interpolate(grid::Grid, nodalvalues::AbstractVector)
     @assert num_allnodes(grid) == length(nodalvalues)
-    dims = (num_quadpoints(get_element(grid)), num_elements(grid))
+    element = create_element(grid)
+    dims = (num_quadpoints(element), num_elements(grid))
     mappedarray(CartesianIndices(dims)) do I
         qp, eltindex = Tuple(I)
         conn = get_connectivities(grid)[eltindex]
-        element = get_element(grid, eltindex)
+        update!(element, get_allnodes(grid)[conn])
         interpolate(element, nodalvalues[conn], qp)
     end
 end
@@ -258,7 +252,7 @@ end
 
 function create_matrix(::Type{T}, field::Field, grid::Grid) where {T}
     m = n = num_dofs(field, grid)
-    element = get_element(grid)
+    element = create_element(grid)
     sizehint = num_dofs(field, element)^2 * num_elements(grid)
     SparseMatrixCOO{T}(m, n; sizehint)
 end
@@ -270,19 +264,22 @@ end
 ## infer
 function infer_integrate_matrix_eltype(f, field::Field, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integrate_matrix_eltype(f′, typeof(field), typeof(get_element(grid)))
+    _infer_integrate_matrix_eltype(f′, typeof(field), get_elementtype(grid))
 end
 function infer_integrate_vector_eltype(f, field::Field, grid::Grid)
     f′ = convert_integrate_function(f, 1) # use dummy eltindex = 1
-    _infer_integrate_vector_eltype(f′, typeof(field), typeof(get_element(grid)))
+    _infer_integrate_vector_eltype(f′, typeof(field), get_elementtype(grid))
 end
 
 ## integrate_lowered!
 function integrate_lowered!(f, A::AbstractArray, field::Field, grid::Grid; zeroinit::Bool = true)
     @assert all(==(num_dofs(field, grid)), size(A))
     zeroinit && fillzero!(A)
+    element = create_element(grid)
     for eltindex in 1:num_elements(grid)
-        Ke = f(eltindex, get_element(grid, eltindex))
+        conn = get_connectivities(grid)[eltindex]
+        update!(element, get_allnodes(grid)[conn])
+        Ke = f(eltindex, element)
         dofs = elementdofs(field, grid, eltindex)
         add!(A, dofs, Ke)
     end
@@ -292,7 +289,7 @@ end
 ## integrate!
 for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractVector, :create_vector))
     @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; zeroinit::Bool = true)
-        Ke = $create_array(eltype(A), field, get_element(grid))
+        Ke = $create_array(eltype(A), field, create_element(grid))
         integrate_lowered!(A, field, grid; zeroinit) do eltindex, element
             f′ = convert_integrate_function(f, eltindex)
             fillzero!(Ke)
@@ -304,7 +301,7 @@ end
 
 # integrate
 function integrate(f, field::Field, grid::Grid)
-    F = integrate_function(f, get_element(grid))
+    F = integrate_function(f, get_elementtype(grid))
     F(f, field, grid)
 end
 
@@ -313,7 +310,8 @@ end
 #########################
 
 function generate_elementstate(::Type{ElementState}, grid::Grid) where {ElementState}
-    elementstate = StructArray{ElementState}(undef, num_quadpoints(get_element(grid)), num_elements(grid))
+    shape = get_shape(grid)
+    elementstate = StructArray{ElementState}(undef, num_quadpoints(shape), num_elements(grid))
     fillzero!(elementstate)
     if :x in propertynames(elementstate)
         elementstate.x .= interpolate(grid, get_allnodes(grid))
