@@ -1,4 +1,18 @@
 @testset "Examples" begin
+    @testset "Gridset" begin
+        for mshfile in ("../examples/HeatEquation/model2d_1.msh",
+                        "../examples/HeatEquation/model2d_2.msh",
+                        "../examples/HeatEquation/model3d_1.msh",
+                        "../examples/HeatEquation/model3d_2.msh",)
+            for (name, grid) in readgmsh(mshfile)
+                for (i, shape) in enumerate(Femto.get_lower_shapes(get_shape(grid)))
+                    n = Femto.num_nodes(shape)
+                    inds = unique!(sort!(reduce(vcat, [conn[1:n] for conn in Femto.get_connectivities(grid)])))
+                    @test get_allnodes(grid)[inds] ≈ get_allnodes(grid, i)[Femto.get_nodeindices(grid, i)]
+                end
+            end
+        end
+    end
     @testset "HeatEquation" begin
         include("../examples/HeatEquation/HeatEquation.jl")
         @testset "Structured mesh" begin

@@ -1,23 +1,80 @@
-struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
-    # unique in gridset
-    nodes::Vector{Vec{dim, T}}
-    # body/face element
+struct DomainInfo{S <: Shape, L}
     shape::S
     connectivities::Vector{Index{L}}
     nodeindices::Vector{Int}
-    function Grid(nodes::Vector{Vec{dim, T}}, shape::S, connectivities::Vector{Index{L}}, nodeindices::Vector{Int}) where {T, dim, shape_dim, S <: Shape{shape_dim}, L}
+end
+
+function generate_gridset(nodes::Vector{Vec{dim, T}}, domains::Dict{String, DomainInfo}) where {dim, T}
+    bodies = Dict(Iterators.filter(p->get_dimension(p.second.shape)==dim, domains))
+    faces  = Dict(Iterators.filter(p->get_dimension(p.second.shape)!=dim, domains))
+    perm = get_perm_lower_shapes(
+        nodes,
+        only(unique(Iterators.map(p->p.second.shape, bodies))),
+        reduce(vcat, Iterators.map(p->p.second.connectivities, bodies)),
+    )
+    new_nodes = permute_nodes(nodes, perm)
+    Dict{String, Grid{T, dim}}(Iterators.map(domains) do (name, domain)
+        connectivities, nodeindices = permute_connectivities_nodeindices(domain.connectivities, domain.nodeindices, perm)
+        name => Grid(new_nodes, domain.shape, connectivities, nodeindices)
+    end)
+end
+
+function get_perm_lower_shapes(nodes::Vector{<: Vec}, shape::Shape, connectivities::Vector{Index{L}}) where {L}
+    @assert num_nodes(shape) == L
+    count = Ref(1)
+    shapes = get_lower_shapes(shape)
+    shapes === () && return nothing
+    perm = mortar(collect(map(shapes) do s
+        start = count[]
+        stop = num_nodes(s)
+        count[] += stop
+        unique!(sort!(reduce(vcat, [view(conn, start:stop) for conn in connectivities])))
+    end))
+    @assert length(nodes) == length(perm)
+    @assert allunique(perm)
+    perm
+end
+
+function permute_nodes(nodes::Vector{<: Vec}, perm::BlockVector{Int})
+    mortar(map(eachblock(perm)) do p
+        nodes[p]
+    end)
+end
+permute_nodes(nodes::Vector{<: Vec}, perm::Nothing) = nodes
+
+function permute_connectivities_nodeindices(connectivities::Vector{Index{L}}, nodeindices::Vector{Int}, perm::BlockVector{Int}) where {L}
+    perm_inv = invperm(perm)
+    new_connectivities = Index{L}[perm_inv[conn] for conn in connectivities]
+    new_nodeindices = perm_inv[nodeindices]
+    sort!(new_nodeindices)
+    count = Ref(0)
+    upper = Ref(0)
+    blocked_nodeindices = mortar(map(eachblock(perm)) do p
+        upper[] += length(p)
+        offset = count[]
+        stop = findlast(≤(upper[]), new_nodeindices)
+        count[] = stop
+        new_nodeindices[offset+1:stop]
+    end)
+    new_connectivities, blocked_nodeindices
+end
+permute_connectivities_nodeindices(connectivities::Vector{<: Index}, nodeindices::Vector{Int}, perm::Nothing) = (connectivities, nodeindices)
+
+const BVector{T} = BlockVector{T, Vector{Vector{T}}, Tuple{BlockedUnitRange{Vector{Int}}}}
+_mortar(x::BVector) = x
+_mortar(x::Vector) = mortar([x])
+
+struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
+    # unique in gridset
+    nodes::BVector{Vec{dim, T}}
+    # body/face element
+    shape::S
+    connectivities::Vector{Index{L}}
+    nodeindices::BVector{Int}
+    function Grid(nodes::AbstractVector{Vec{dim, T}}, shape::S, connectivities::Vector{Index{L}}, nodeindices::AbstractVector{Int} = collect(1:length(nodes))) where {T, dim, shape_dim, S <: Shape{shape_dim}, L}
         @assert num_nodes(shape) == L
-        new{T, dim, shape_dim, S, L}(nodes, shape, connectivities, nodeindices)
+        new{T, dim, shape_dim, S, L}(_mortar(nodes), shape, connectivities, _mortar(nodeindices))
     end
-end
-
-function Grid(nodes::Vector{<: Vec}, shape::Shape, connectivities::Vector{<: Index})
-    Grid(nodes, shape, connectivities, collect(1:length(nodes)))
-end
-
-# core fields in grid are inherited
-function Grid(grid::Grid, shape::Shape, connectivities::Vector{<: Index}, nodeindices::Vector{Int})
-    Grid(get_allnodes(grid), shape, connectivities, nodeindices)
 end
 
 #########
@@ -25,7 +82,9 @@ end
 #########
 
 get_allnodes(grid::Grid) = grid.nodes
+get_allnodes(grid::Grid, order::Int) = get_allnodes(grid)[Block.(1:order)]
 get_nodeindices(grid::Grid) = grid.nodeindices
+get_nodeindices(grid::Grid, order::Int) = get_nodeindices(grid)[Block.(1:order)]
 get_connectivities(grid::Grid) = grid.connectivities
 get_dimension(grid::Grid{<: Any, dim}) where {dim} = dim
 get_shape(grid::Grid) = grid.shape
@@ -138,7 +197,12 @@ function _generate_grid(::Type{T}, shape::Shape{shape_dim}, axes::Vararg{Abstrac
     mesh = StructuredMesh(axes, get_order(shape))
     nodes = vec(collect(Vec{dim, T}, mesh))
     connectivities = generate_connectivities(shape, LinearIndices(mesh))
-    Grid(nodes, shape, connectivities)
+    perm = get_perm_lower_shapes(nodes, shape, connectivities)
+    Grid(
+        permute_nodes(nodes, perm),
+        shape,
+        permute_connectivities_nodeindices(connectivities, collect(1:length(nodes)), perm)...,
+    )
 end
 
 ####################
@@ -174,15 +238,15 @@ function _generate_gridset(::Type{T}, shape::Shape{2}, axes::Vararg{AbstractVect
     boundary = mapreduce(vec, vcat, (left, right, bottom, top))
 
     allnodes = vec(collect(Vec{2, T}, mesh))
-    grid = Grid(allnodes, shape, main)
-    Dict{String, Grid{T, 2}}(
-        "main"   => grid,
-        "left"   => Grid(grid, bshape, left, sort!(nodeinds_left)),
-        "right"  => Grid(grid, bshape, right, sort!(nodeinds_right)),
-        "bottom" => Grid(grid, bshape, bottom, sort!(nodeinds_bottom)),
-        "top"    => Grid(grid, bshape, top, sort!(nodeinds_top)),
-        "boundary" => Grid(grid, bshape, boundary, sort!(nodeinds_boundary))
+    domains = Dict{String, DomainInfo}(
+        "main"   => DomainInfo(shape, main, collect(1:length(allnodes))),
+        "left"   => DomainInfo(bshape, left, sort!(nodeinds_left)),
+        "right"  => DomainInfo(bshape, right, sort!(nodeinds_right)),
+        "bottom" => DomainInfo(bshape, bottom, sort!(nodeinds_bottom)),
+        "top"    => DomainInfo(bshape, top, sort!(nodeinds_top)),
+        "boundary" => DomainInfo(bshape, boundary, sort!(nodeinds_boundary))
     )
+    generate_gridset(allnodes, domains)
 end
 function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVector, 3}) where {T}
     bshape = boundshape(shape)
@@ -209,17 +273,17 @@ function _generate_gridset(::Type{T}, shape::Shape{3}, axes::Vararg{AbstractVect
     boundary = [left; right; bottom; top; front; back]
 
     allnodes = vec(collect(Vec{3, T}, mesh))
-    grid = Grid(allnodes, shape, main)
-    Dict{String, Grid{T, 3}}(
-        "main"   => grid,
-        "left"   => Grid(grid, bshape, left, sort!(vec(nodeinds_left))),
-        "right"  => Grid(grid, bshape, right, sort!(vec(nodeinds_right))),
-        "bottom" => Grid(grid, bshape, bottom, sort!(vec(nodeinds_bottom))),
-        "top"    => Grid(grid, bshape, top, sort!(vec(nodeinds_top))),
-        "front"  => Grid(grid, bshape, front, sort!(vec(nodeinds_front))),
-        "back"   => Grid(grid, bshape, back, sort!(vec(nodeinds_back))),
-        "boundary" => Grid(grid, bshape, boundary, sort!(vec(nodeinds_boundary)))
+    domains = Dict{String, DomainInfo}(
+        "main"   => DomainInfo(shape, main, collect(1:length(allnodes))),
+        "left"   => DomainInfo(bshape, left, sort!(vec(nodeinds_left))),
+        "right"  => DomainInfo(bshape, right, sort!(vec(nodeinds_right))),
+        "bottom" => DomainInfo(bshape, bottom, sort!(vec(nodeinds_bottom))),
+        "top"    => DomainInfo(bshape, top, sort!(vec(nodeinds_top))),
+        "front"  => DomainInfo(bshape, front, sort!(vec(nodeinds_front))),
+        "back"   => DomainInfo(bshape, back, sort!(vec(nodeinds_back))),
+        "boundary" => DomainInfo(bshape, boundary, sort!(vec(nodeinds_boundary)))
     )
+    generate_gridset(allnodes, domains)
 end
 
 ###############

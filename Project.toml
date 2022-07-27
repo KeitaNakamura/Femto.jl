@@ -4,6 +4,7 @@ authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
 version = "0.3.1"
 
 [deps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 GmshReader = "bf82f66e-8fcd-4ce9-a12d-a25ca77d3b00"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MappedArrays = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"

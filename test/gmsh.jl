@@ -29,7 +29,7 @@ import GmshReader
         @test Femto.get_shape(data["left_right"]) === Line2()
         @test Femto.get_shape(data["top_bottom"]) === Line2()
         ## nodes
-        @test data["main"].nodes === data["left_right"].nodes === data["top_bottom"].nodes
+        @test data["main"].nodes == data["left_right"].nodes == data["top_bottom"].nodes
         ## nodal indices
         # left_right
         grid = data["left_right"]
