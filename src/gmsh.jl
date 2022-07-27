@@ -28,7 +28,7 @@ from_gmsh_connectivity(::Tet10) = Index(1,2,3,4,5,7,8,6,9,10)
 from_gmsh_connectivity(::Quad4) = Index(1,2,3,4)
 from_gmsh_connectivity(::Quad9) = Index(1,2,3,4,5,6,7,8,9)
 from_gmsh_connectivity(::Hex8)  = Index(1,2,3,4,5,6,7,8)
-from_gmsh_connectivity(::Hex27) = Index(1,2,3,4,9,12,14,10,21,5,6,7,8,17,19,20,18,26,11,13,15,16,22,24,25,23,27)
+from_gmsh_connectivity(::Hex27) = Index(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27)
 
 function from_gmsh(elementset::GmshReader.ElementSet)
     shape = from_gmsh_shape(elementset.elementname)

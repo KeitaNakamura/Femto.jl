@@ -20,7 +20,7 @@ to_vtk_connectivity(::Quad9) = Index(1,2,3,4,5,6,7,8,9)
 to_vtk_connectivity(::Tet4)  = Index(1,2,3,4)
 to_vtk_connectivity(::Tet10) = Index(1,2,3,4,5,8,6,7,10,9)
 to_vtk_connectivity(::Hex8)  = Index(1,2,3,4,5,6,7,8)
-to_vtk_connectivity(::Hex27) = Index(1,2,3,4,10,11,12,13,5,6,7,8,14,15,16,17,19,20,21,22,26,24,23,25,9,18,27)
+to_vtk_connectivity(::Hex27) = Index(1,2,3,4,5,6,7,8,9,12,14,10,17,19,20,18,11,13,15,16,23,24,22,25,21,26,27)
 
 function WriteVTK.vtk_grid(filename::AbstractString, grid::Grid{T, dim}; kwargs...) where {T, dim}
     cells = MeshCell[]
