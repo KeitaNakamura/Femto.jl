@@ -5,11 +5,14 @@ struct Grid{T, dim, shape_dim, S <: Shape{shape_dim}, L}
     shape::S
     connectivities::Vector{Index{L}}
     nodeindices::Vector{Int}
+    function Grid(nodes::Vector{Vec{dim, T}}, shape::S, connectivities::Vector{Index{L}}, nodeindices::Vector{Int}) where {T, dim, shape_dim, S <: Shape{shape_dim}, L}
+        @assert num_nodes(shape) == L
+        new{T, dim, shape_dim, S, L}(nodes, shape, connectivities, nodeindices)
+    end
 end
 
-function Grid(nodes::Vector{Vec{dim, T}}, shape::Shape, connectivities::Vector{Index{L}}, nodeindices::Vector{Int} = collect(1:length(nodes))) where {dim, T, L}
-    @assert num_nodes(shape) ≤ L
-    Grid(nodes, element, connectivities, nodeindices)
+function Grid(nodes::Vector{<: Vec}, shape::Shape, connectivities::Vector{<: Index})
+    Grid(nodes, shape, connectivities, collect(1:length(nodes)))
 end
 
 # core fields in grid are inherited
