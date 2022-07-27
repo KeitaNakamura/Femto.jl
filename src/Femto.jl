@@ -52,7 +52,6 @@ export
     Tet10,
     # Grid
     Grid,
-    SingleGrid,
     num_allnodes,
     get_allnodes,
     get_connectivities,
@@ -88,9 +87,7 @@ include("shapes.jl")
 include("Elements/Element.jl")
 include("Elements/SingleElement.jl")
 include("Elements/common.jl")
-include("Grids/Grid.jl")
-include("Grids/SingleGrid.jl")
-include("Grids/common.jl")
+include("grid.jl")
 include("integration.jl")
 include("solve.jl")
 
