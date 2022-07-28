@@ -25,6 +25,7 @@ Base.size(A::SparseMatrixCOO) = (A.m, A.n)
 
 SparseArrays.sparse(A::SparseMatrixCOO) = sparse(A, size(A)...)
 SparseArrays.sparse(A::SparseMatrixCOO, m::Int, n::Int, args...) = sparse(A.I, A.J, A.V, m, n, args...)
+Base.copyto!(dest::AbstractMatrix, src::SparseMatrixCOO) = (copyto!(dest, sparse(src)); dest)
 
 function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
     m, n = map(length, (I, J))
