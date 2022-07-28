@@ -14,7 +14,7 @@ function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::SparseMa
         for i in nzrange(K, j)
             row = rows[i]
             val = vals[i]
-            F[row] -= U[row] * val
+            F[row] -= U[j] * val
         end
     end
 end
