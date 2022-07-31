@@ -88,6 +88,8 @@ function update!(element::SingleFaceElement, xᵢ::AbstractVector{<: Vec})
     element
 end
 
+get_normal(elt::SingleFaceElement, qp::Int) = (@_propagate_inbounds_meta; elt.normal[qp])
+
 ###############
 # interpolate #
 ###############

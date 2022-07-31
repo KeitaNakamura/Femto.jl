@@ -4,6 +4,7 @@ using Reexport
 using StaticArrays
 using StructArrays
 using MappedArrays
+using BlockArrays
 @reexport using Tensorial
 
 using Base: @pure, @_inline_meta, @_propagate_inbounds_meta
@@ -22,11 +23,14 @@ export
     integrate,
     integrate!,
     interpolate,
+    mixed,
+    decrease_order,
     # dual
     ∇,
     # sparse
     SparseMatrixCOO,
     # field
+    Field,
     ScalarField,
     VectorField,
     Sf,
@@ -37,6 +41,9 @@ export
     SingleElement,
     SingleBodyElement,
     SingleFaceElement,
+    MixedElement,
+    MixedBodyElement,
+    MixedFaceElement,
     update!,
     # Shape
     Shape,
@@ -55,11 +62,13 @@ export
     num_allnodes,
     get_allnodes,
     get_connectivities,
-    nodedofs,
-    elementdofs,
+    get_dofs,
+    get_nodedofs,
+    get_elementdofs,
     generate_grid,
     generate_gridset,
     generate_elementstate,
+    gridvalues,
     # solve
     solve!,
     # gmsh
@@ -72,20 +81,15 @@ export
 
 const Index{L} = SVector{L, Int}
 
-abstract type Field end
-abstract type SingleField <: Field end
-struct ScalarField <: SingleField end
-struct VectorField <: SingleField end
-const Sf = ScalarField
-const Vf = VectorField
-
 include("dual.jl")
 include("sparse.jl")
 include("utils.jl")
 
 include("shapes.jl")
+include("fields.jl")
 include("Elements/Element.jl")
 include("Elements/SingleElement.jl")
+include("Elements/MixedElement.jl")
 include("Elements/common.jl")
 include("grid.jl")
 include("integration.jl")

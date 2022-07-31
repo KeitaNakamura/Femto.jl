@@ -38,6 +38,7 @@ end
 Base.zero(::Type{TensorGradient{S, T, N, TT, G}}) where {S, T, N, TT, G} = TensorGradient(zero(TT), zero(G))
 
 ∇(x::TensorGradient) = x.gradient
+LinearAlgebra.dot(::typeof(∇), x::TensorGradient{Tuple{dim}}) where {dim} = tr(∇(x))
 
 function Base.show(io::IO, ::MIME"text/plain", x::TensorGradient)
     print(io, x.tensor, " (∇x = ", x.gradient, ")")

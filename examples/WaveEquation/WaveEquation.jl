@@ -1,12 +1,13 @@
 using Femto
 
 function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
-    gridset = readgmsh(filename)
+    field = ScalarField()
 
+    gridset = readgmsh(filename)
     grid = gridset["main"]
     source = gridset["source"]
 
-    ndofs = num_dofs(Sf(), grid)
+    ndofs = num_dofs(field, grid)
     K = SparseMatrixCOO(ndofs, ndofs)
     M = zeros(ndofs)
     F = zeros(ndofs)
@@ -16,7 +17,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     Uₙ₊₁ = zeros(ndofs)
 
     dirichlet = falses(ndofs)
-    dirichlet[nodedofs(Sf(), gridset["boundary"])] .= true
+    dirichlet[get_nodedofs(field, gridset["boundary"])] .= true
 
     outdir = joinpath(dirname(filename), "Output")
     mkpath(outdir)
@@ -27,10 +28,10 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
-        integrate!((i,v,u)->∇(v)⋅∇(u), K, Sf(), grid)
-        integrate!((i,v)->v, M, Sf(), grid) # lumped mass matrix
+        integrate!((i,v,u)->∇(v)⋅∇(u), K, field, grid)
+        integrate!((i,v)->v, M, field, grid) # lumped mass matrix
         if t < 0.2
-            integrate!((i,v)->v, F, Sf(), source)
+            integrate!((i,v)->v, F, field, source)
         else
             F .= 0
         end
