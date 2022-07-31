@@ -36,4 +36,14 @@
         include("../examples/WaveEquation/WaveEquation.jl")
         @test norm(WaveEquation()) ≈ 0.07100524583703295
     end
+    @testset "StokesEquation" begin
+        # currently use only nodal velocity values for test
+        include("../examples/StokesEquation/StokesEquation.jl")
+        gridset = readgmsh("../examples/StokesEquation/model.msh")
+        n = num_allnodes(gridset["main"])
+        @test norm(StokesEquation(gridset)[1:end-n+1]) ≈ 23.42769930149981
+        gridset = generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1)
+        n = num_allnodes(gridset["main"])
+        @test norm(StokesEquation(gridset)[1:end-n+1]) ≈ 29.7990808415312
+    end
 end
