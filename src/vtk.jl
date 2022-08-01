@@ -22,17 +22,20 @@ to_vtk_connectivity(::Tet10) = Index(1,2,3,4,5,8,6,7,10,9)
 to_vtk_connectivity(::Hex8)  = Index(1,2,3,4,5,6,7,8)
 to_vtk_connectivity(::Hex27) = Index(1,2,3,4,5,6,7,8,9,12,14,10,17,19,20,18,11,13,15,16,23,24,22,25,21,26,27)
 
-function WriteVTK.vtk_grid(filename::AbstractString, grid::Grid{T, dim}; kwargs...) where {T, dim}
+function _vtk_grid(filename::AbstractString, shape::Shape, grid::Grid{T, dim}; kwargs...) where {T, dim}
     cells = MeshCell[]
-    shape = get_shape(grid)
     celltype = to_vtk_celltype(shape)
     for eltindex in 1:num_elements(grid)
         conn = get_connectivity(grid, eltindex)
         push!(cells, MeshCell(celltype, conn[to_vtk_connectivity(shape)]))
     end
-    points = reshape(reinterpret(T, get_allnodes(grid)), (dim, num_allnodes(grid)))
+    order = get_order(shape)
+    nodes = get_allnodes(grid, order)
+    points = reshape(reinterpret(T, nodes), (dim, length(nodes)))
     vtk_grid(filename, points, cells; kwargs...)
 end
+WriteVTK.vtk_grid(filename::AbstractString, grid::Grid; kwargs...) = _vtk_grid(filename, get_shape(grid), grid; kwargs...)
+WriteVTK.vtk_grid(filename::AbstractString, field::Field, grid::Grid; kwargs...) = _vtk_grid(filename, get_shape(field, grid), grid; kwargs...)
 
 openvtk(args...; kwargs...) = vtk_grid(args...; kwargs...)
 openpvd(args...; kwargs...) = paraview_collection(args...; kwargs...)
