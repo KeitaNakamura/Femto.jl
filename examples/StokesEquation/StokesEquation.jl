@@ -21,13 +21,15 @@ function StokesEquation(gridset::Dict; dir::String = @__DIR__)
             dirichlet[dofs] .= true
         end
     end
+    dirichlet[end] = true # handle singularity
 
     solve!(U, K, F, dirichlet)
 
     openvtk(joinpath(dir, "StokesEquation"), decrease_order(grid)) do vtk
         U_u, U_p = gridvalues(U, field, grid)
+        V_p = integrate((index, q) -> q, ScalarField(1), grid)
         vtk["Velocity"] = view(U_u, 1:length(U_p))
-        vtk["Pressure"] = U_p
+        vtk["Pressure"] = U_p .- (U_p' * V_p) / sum(V_p) # modify for zero-mean pressure in domain
     end
 
     U
