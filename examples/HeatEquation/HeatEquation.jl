@@ -16,7 +16,7 @@ function HeatEquation(field::Field, gridset::Dict; dir::String = @__DIR__)
 
     solve!(U, K, F, dirichlet)
 
-    openvtk(joinpath(dir, "HeatEquation"), grid) do vtk
+    openvtk(joinpath(dir, "HeatEquation"), field, grid) do vtk
         vtk["Temperature"] = U
     end
 
