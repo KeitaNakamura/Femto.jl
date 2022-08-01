@@ -38,11 +38,7 @@
     end
     @testset "StokesEquation" begin
         include("../examples/StokesEquation/StokesEquation.jl")
-        gridset = readgmsh("../examples/StokesEquation/model.msh")
-        n = num_allnodes(gridset["main"])
-        @test norm(StokesEquation(gridset)) ≈ 840.7761276984636
-        gridset = generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1)
-        n = num_allnodes(gridset["main"])
-        @test norm(StokesEquation(gridset)) ≈ 117403.00599179954
+        @test norm(StokesEquation(readgmsh("../examples/StokesEquation/model.msh"))) ≈ 840.7761276984636
+        @test norm(StokesEquation(generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1))) ≈ 117403.00599179954
     end
 end
