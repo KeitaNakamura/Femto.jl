@@ -30,12 +30,8 @@ struct MixedBodyElement{T, dim, N, Sqr <: Shape{dim}, Elts <: NTuple{N, SingleBo
     elements::Elts
 end
 
-# constructors
 function MixedBodyElement{T}(shapes::Tuple{Vararg{Shape}}, shape_qr::Shape = default_quadrature_shape(shapes)) where {T}
     MixedBodyElement(map(shape -> Element{T}(shape, shape_qr), shapes))
-end
-function MixedBodyElement(shapes::Tuple{Vararg{Shape}}, shape_qr::Shape = default_quadrature_shape(shapes))
-    MixedBodyElement(Float64, shapes, shape_qr)
 end
 
 function Base.show(io::IO, mixed::MixedBodyElement)
@@ -50,12 +46,8 @@ struct MixedFaceElement{T, dim, N, shape_dim, Sqr <: Shape{shape_dim}, Elts <: N
     elements::Elts
 end
 
-# constructors
 function MixedFaceElement{T, dim}(shapes::Tuple{Vararg{Shape}}, shape_qr::Shape = default_quadrature_shape(shapes)) where {T, dim}
     MixedFaceElement(map(shape -> Element{T, dim}(shape, shape_qr), shapes))
-end
-function MixedFaceElement(shapes::Tuple{Vararg{Shape}}, shape_qr::Shape = default_quadrature_shape(shapes))
-    MixedFaceElement(Float64, shapes, shape_qr)
 end
 
 function Base.show(io::IO, mixed::MixedFaceElement)
