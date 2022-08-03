@@ -12,10 +12,6 @@ const Vf = VectorField
 @pure VectorField(order::Int) = VectorField{order}()
 @pure get_order(::SingleField{order}) where {order} = order::Int
 
-const SingleFieldNoOrder = SingleField{nothing}
-const ScalarFieldNoOrder = ScalarField{nothing}
-const VectorFieldNoOrder = VectorField{nothing}
-
 struct MixedField{N, Fields <: NTuple{N, SingleField}} <: Field
     fields::Fields
 end

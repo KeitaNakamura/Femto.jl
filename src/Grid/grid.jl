@@ -30,7 +30,7 @@ end
 # utils #
 #########
 
-get_order(::SingleFieldNoOrder, grid::Grid) = get_order(get_shape(grid))
+get_order(::SingleField{nothing}, grid::Grid) = get_order(get_shape(grid))
 get_order(field::SingleField, grid::Grid) = get_order(field)
 get_order(mixed::MixedField, grid::Grid) = maximum(fld -> get_order(fld, grid), mixed.fields)
 
