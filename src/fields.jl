@@ -20,7 +20,6 @@ struct MixedField{N, Fields <: NTuple{N, SingleField}} <: Field
     fields::Fields
 end
 mixed(fields::SingleField...) = MixedField(fields)
-get_singlefields(mixed::MixedField) = mixed.fields
 
 ## dofindices
 # ScalarField

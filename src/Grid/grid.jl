@@ -32,7 +32,7 @@ end
 
 get_order(::SingleFieldNoOrder, grid::Grid) = get_order(get_shape(grid))
 get_order(field::SingleField, grid::Grid) = get_order(field)
-get_order(mixed::MixedField, grid::Grid) = maximum(fld -> get_order(fld, grid), get_singlefields(mixed))
+get_order(mixed::MixedField, grid::Grid) = maximum(fld -> get_order(fld, grid), mixed.fields)
 
 get_allnodes(grid::Grid) = grid.nodes
 function get_allnodes(grid::Grid, order::Int)
@@ -68,7 +68,7 @@ function get_connectivity(field::SingleField, grid::Grid, i::Int)
     _get_connectivity(get_shape(field, grid), grid, i)
 end
 function get_connectivity(mixed::MixedField, grid::Grid, i::Int)
-    field = argmax(fld -> get_order(fld, grid), get_singlefields(mixed))
+    field = argmax(fld -> get_order(fld, grid), mixed.fields)
     get_connectivity(field, grid, i)
 end
 
@@ -80,7 +80,7 @@ get_available_shapes(grid::Grid) = get_lower_shapes(get_shape(grid))
 
 create_element(grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(grid))
 create_element(field::SingleField, grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(get_shape(field, grid))
-create_element(mixed::MixedField{N}, grid::Grid{T, dim}) where {N, T, dim} = Element{T, dim}(ntuple(i -> get_shape(get_singlefields(mixed)[i], grid), Val(N)))
+create_element(mixed::MixedField, grid::Grid{T, dim}) where {T, dim} = Element{T, dim}(map(field -> get_shape(field, grid), mixed.fields))
 get_elementtype(field::Field, grid::Grid) = Base._return_type(create_element, typeof((field, grid)))
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
@@ -89,7 +89,7 @@ num_elements(grid::Grid) = length(get_connectivities(grid))
 
 num_dofs(field::ScalarField, grid::Grid) = num_allnodes(field, grid)
 num_dofs(field::VectorField, grid::Grid) = num_allnodes(field, grid) * get_dimension(grid)
-num_dofs(mixed::MixedField, grid::Grid) = sum(field -> num_dofs(field, grid), get_singlefields(mixed))
+num_dofs(mixed::MixedField, grid::Grid) = sum(field -> num_dofs(field, grid), mixed.fields)
 
 ########
 # dofs #
@@ -106,7 +106,7 @@ end
 for func in (:get_dofs, :get_nodedofs)
     @eval function $func(mixed::MixedField, grid::Grid)
         count = Ref(0)
-        map(get_singlefields(mixed)) do field
+        map(mixed.fields) do field
             offset = count[]
             count[] += num_dofs(field, grid)
             $func(field, grid; offset)
@@ -119,7 +119,7 @@ function get_elementdofs(field::SingleField, grid::Grid, i::Int; offset::Int = 0
 end
 function get_elementdofs(mixed::MixedField, grid::Grid, i::Int)
     count = Ref(0)
-    reduce(vcat, map(get_singlefields(mixed)) do field
+    reduce(vcat, map(mixed.fields) do field
         offset = count[]
         count[] += num_dofs(field, grid)
         get_elementdofs(field, grid, i; offset)
@@ -223,8 +223,8 @@ function gridvalues(U::AbstractVector, field::SingleField, grid::Grid)
     reinterpret(ElType, U)
 end
 
-function gridvalues(U::AbstractVector, mixed::MixedField{N}, grid::Grid) where {N}
-    map(get_singlefields(mixed), get_dofs(mixed, grid)) do field, dofs
+function gridvalues(U::AbstractVector, mixed::MixedField, grid::Grid)
+    map(mixed.fields, get_dofs(mixed, grid)) do field, dofs
         gridvalues(view(U, dofs), field, grid)
     end
 end
