@@ -15,6 +15,7 @@ const Vf = VectorField
 struct MixedField{N, Fields <: NTuple{N, SingleField}} <: Field
     fields::Fields
 end
+MixedField(fields::SingleField...) = MixedField(fields)
 mixed(fields::SingleField...) = MixedField(fields)
 
 ## dofindices

@@ -1,5 +1,8 @@
 abstract type MixedElement{T, dim, N} <: Element{T, dim} end
 
+MixedElement(elements::SingleBodyElement...) = MixedBodyElement(elements)
+MixedElement(elements::SingleFaceElement...) = MixedFaceElement(elements)
+
 function get_detJdΩ(mixed::MixedElement, qp::Int)
     element = argmax(num_nodes, mixed.elements)
     get_detJdΩ(element, qp)
