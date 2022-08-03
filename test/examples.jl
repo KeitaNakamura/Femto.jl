@@ -34,7 +34,7 @@
     end
     @testset "WaveEquation" begin
         include("../examples/WaveEquation/WaveEquation.jl")
-        @test norm(WaveEquation()) ≈ 0.07100524583703295
+        @test norm(WaveEquation("../examples/WaveEquation/model.msh")) ≈ 0.07100524583703295
     end
     @testset "StokesEquation" begin
         include("../examples/StokesEquation/StokesEquation.jl")
