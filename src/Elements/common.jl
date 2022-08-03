@@ -137,3 +137,14 @@ function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
     Elt <: FaceElementLike && error("wrong number of arguments in `integrate`, use `(index, normal, v)`")
     error("unreachable")
 end
+
+###############
+# interpolate #
+###############
+
+function interpolate(field::Field, element::Element, uᵢ::AbstractVector)
+    @assert num_dofs(field, element) == length(uᵢ)
+    mappedarray(1:num_quadpoints(element)) do qp
+        @inbounds interpolate(field, element, uᵢ, qp)
+    end
+end

@@ -131,20 +131,18 @@ end
 ###############
 
 # returned mappedarray's size is the same as elementstate matrix
-function interpolate(grid::Grid, nodalvalues::AbstractVector)
-    @assert num_allnodes(grid) == length(nodalvalues)
-    element = create_element(grid)
+function interpolate(field::Field, grid::Grid, nodalvalues::AbstractVector)
+    @assert num_dofs(field, grid) == length(nodalvalues)
+    element = create_element(field, grid)
     dims = (num_quadpoints(element), num_elements(grid))
     mappedarray(CartesianIndices(dims)) do I
         qp, eltindex = Tuple(I)
-        conn = get_connectivities(grid)[eltindex]
+        conn = get_connectivity(field, grid, eltindex)
         update!(element, get_allnodes(grid)[conn])
-        interpolate(element, nodalvalues[conn], qp)
+        dofs = get_elementdofs(field, grid, eltindex)
+        interpolate(field, element, nodalvalues[dofs], qp)
     end
 end
-
-interpolate(::ScalarField, grid::Grid, nodalvalues::AbstractVector{<: Real}) = interpolate(grid, nodalvalues)
-interpolate(::VectorField, grid::Grid{T, dim}, nodalvalues::AbstractVector{<: Real}) where {T, dim} = interpolate(grid, reinterpret(Vec{dim, T}, nodalvalues))
 
 #############
 # integrate #
