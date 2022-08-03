@@ -236,12 +236,12 @@ end
 # generate_elementstate #
 #########################
 
-function generate_elementstate(::Type{ElementState}, grid::Grid) where {ElementState}
+function generate_elementstate(::Type{ElementState}, grid::Grid{T}) where {ElementState, T}
     shape = get_shape(grid)
     elementstate = StructArray{ElementState}(undef, num_quadpoints(shape), num_elements(grid))
     fillzero!(elementstate)
     if :x in propertynames(elementstate)
-        elementstate.x .= interpolate(grid, get_allnodes(grid))
+        elementstate.x .= interpolate(VectorField(), grid, reinterpret(T, get_allnodes(grid)))
     end
     elementstate
 end

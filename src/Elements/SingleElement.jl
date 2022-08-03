@@ -97,33 +97,34 @@ get_normal(elt::SingleFaceElement, qp::Int) = (@_propagate_inbounds_meta; elt.no
 _otimes(x, y) = x * y
 _otimes(x::Tensor, y::Tensor) = x ⊗ y
 
+_reinterpret(::ScalarField, ::Val{dim}, uᵢ::AbstractVector{T}) where {dim, T <: Real} = uᵢ
+_reinterpret(::ScalarField, ::Val{dim}, uᵢ::SVector{L, T}) where {dim, L, T <: Real} = uᵢ
+_reinterpret(::VectorField, ::Val{dim}, uᵢ::AbstractVector{T}) where {dim, T <: Real} = reinterpret(Vec{dim, T}, uᵢ)
+function _reinterpret(::VectorField, ::Val{dim}, uᵢ::SVector{L, T}) where {dim, L, T <: Real}
+    n = L ÷ dim
+    M = SMatrix{dim, n}(uᵢ)
+    SVector(ntuple(j -> Tensor(M[:,j]), Val(n)))
+end
+
 function interpolate(element::SingleElement, uᵢ::AbstractVector, qp::Int)
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
-    @inbounds begin
-        N, dNdx = element.N[qp], element.dNdx[qp]
-        u = mapreduce(_otimes, +, uᵢ, N)
-        dudx = mapreduce(_otimes, +, uᵢ, dNdx)
-    end
+    @assert num_nodes(element) == length(uᵢ)
+    @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds N, dNdx = element.N[qp], element.dNdx[qp]
+    u = mapreduce(_otimes, +, uᵢ, N)
+    dudx = mapreduce(_otimes, +, uᵢ, dNdx)
     dual_gradient(u, dudx)
 end
 
 function interpolate(element::SingleElement, uᵢ::AbstractVector, ξ::Vec)
+    @assert num_nodes(element) == length(uᵢ)
     N, dNdx = values_gradients(get_shape(element), ξ)
     u = mapreduce(_otimes, +, uᵢ, N)
     dudx = mapreduce(_otimes, +, uᵢ, dNdx)
     dual_gradient(u, dudx)
 end
 
-# interpolate `uᵢ` at all quadrature points
-function interpolate(element::SingleElement, uᵢ::AbstractVector)
-    @assert num_nodes(element) == length(uᵢ)
-    mappedarray(1:num_quadpoints(element)) do qp
-        @inbounds interpolate(element, uᵢ, qp)
-    end
-end
-
-interpolate(::ScalarField, element::SingleElement, uᵢ::AbstractVector{<: Real}, args...) = interpolate(element, uᵢ, args...)
-interpolate(::VectorField, element::SingleElement{T, dim}, uᵢ::AbstractVector{<: Real}, args...) where {T, dim} = interpolate(element, reinterpret(Vec{dim, T}, uᵢ), args...)
+interpolate(fld::SingleField, elt::SingleElement, uᵢ::AbstractVector, qp) =
+    interpolate(elt, _reinterpret(fld, Val(get_dimension(elt)), uᵢ), qp)
 
 ##############################
 # shape values and gradients #

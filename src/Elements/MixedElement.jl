@@ -98,3 +98,19 @@ end
 function update!(mixed::MixedElement, xᵢ::AbstractVector{<: Vec})
     map(elt -> update!(elt, xᵢ[SOneTo(num_nodes(elt))]), mixed.elements)
 end
+
+###############
+# interpolate #
+###############
+
+function interpolate(field::MixedField, element::MixedElement, Uᵢ::AbstractVector{<: Real}, qp)
+    @assert num_dofs(field, element) == length(Uᵢ)
+    count = Ref(1)
+    map(field.fields, element.elements) do fld, elt
+        start = count[]
+        stop = start + num_dofs(fld, elt) - 1
+        count[] = stop + 1
+        uᵢ = _reinterpret(fld, Val(get_dimension(elt)), view(Uᵢ, start:stop))
+        interpolate(elt, uᵢ, qp)
+    end
+end

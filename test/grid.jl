@@ -116,13 +116,13 @@ end
     element = Femto.create_element(grid)
     eltstate = @inferred generate_elementstate(ElementState, grid)
     @test size(eltstate) == (Femto.num_quadpoints(element), Femto.num_elements(grid))
-    X = @inferred interpolate(grid, Femto.get_allnodes(grid))
+    X = @inferred interpolate(VectorField(), grid, reinterpret(Float64, Femto.get_allnodes(grid)))
     for I in CartesianIndices(eltstate)
         qp, eltindex = Tuple(I)
-        conn = Femto.get_connectivities(grid)[eltindex]
+        conn = get_connectivity(grid, eltindex)
         q = eltstate[I]
         @test q isa ElementState
-        @test q.x ≈ interpolate(element, Femto.get_allnodes(grid)[conn], qp)
+        @test q.x ≈ interpolate(element, get_allnodes(grid)[conn], qp)
         @test q.x ≈ X[I]
         @test q.σ == zero(q.σ)
         @test q.index == zero(q.index)

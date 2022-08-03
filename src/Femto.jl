@@ -62,6 +62,7 @@ export
     num_allnodes,
     get_allnodes,
     get_connectivities,
+    get_connectivity,
     get_dofs,
     get_nodedofs,
     get_elementdofs,
