@@ -82,17 +82,17 @@
             grid = @inferred generate_grid(0:2:2)
             element = Element(Line2())
             inds = get_elementdofs(field, grid, 1)
-            @test Femto.sparse(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
+            @test Array(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
             # dim 2
             grid = @inferred generate_grid(0:2:2, 1:2:3)
             element = Element(Quad4())
             inds = get_elementdofs(field, grid, 1)
-            @test Femto.sparse(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
+            @test Array(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
             # dim 3
             grid = @inferred generate_grid(0:2:2, 1:2:3, 2:2:4)
             element = Element(Hex8())
             inds = get_elementdofs(field, grid, 1)
-            @test Femto.sparse(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
+            @test Array(@inferred integrate((index,v,u)->v*u, field, grid)) ≈ integrate((qp,v,u)->v*u, field, element)[inds, inds]
         end
         @testset "MixedField" begin
             # dim 2
@@ -101,7 +101,7 @@
             element = Element((Quad9(), Quad4()))
             inds = get_elementdofs(field, grid, 1)
             f = (index, (v,q), (u,p)) -> ∇(v) ⊡ ∇(u) - (∇⋅v)*p + q*(∇⋅u)
-            @test Femto.sparse(@inferred integrate(f, field, grid)) ≈ integrate(f, field, element)[inds, inds]
+            @test Array(@inferred integrate(f, field, grid)) ≈ integrate(f, field, element)[inds, inds]
         end
     end
 end
