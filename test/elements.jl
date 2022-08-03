@@ -223,4 +223,24 @@ end
         end
         @test integrate(f, field, element) ≈ F
     end
+    @testset "interpolate" begin
+        # field
+        fld1 = VectorField(2)
+        fld2 = ScalarField(1)
+        mixed_fld = MixedField(fld1, fld2)
+        # element
+        elt1 = Element(Quad9(), Quad9())
+        elt2 = Element(Quad4(), Quad9())
+        mixed_elt = MixedElement(elt1, elt2)
+        # num_dofs
+        n1 = num_dofs(fld1, elt1)
+        n2 = num_dofs(fld2, elt2)
+        n = num_dofs(mixed_fld, mixed_elt)
+        @test n1 + n2 == n
+        # interpolate
+        Ui = rand(n)
+        mixed_U = interpolate(mixed_fld, mixed_elt, Ui)
+        @test interpolate(fld1, elt1, Ui[1:n1]) ≈ map(u->u[1], mixed_U)
+        @test interpolate(fld2, elt2, Ui[n1+1:n]) ≈ map(u->u[2], mixed_U)
+    end
 end

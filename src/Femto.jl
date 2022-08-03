@@ -33,6 +33,7 @@ export
     Field,
     ScalarField,
     VectorField,
+    MixedField,
     Sf,
     Vf,
     # Element
