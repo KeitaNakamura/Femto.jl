@@ -135,10 +135,14 @@ function interpolate(field::Field, grid::Grid, nodalvalues::AbstractVector)
     @assert num_dofs(field, grid) == length(nodalvalues)
     element = create_element(field, grid)
     dims = (num_quadpoints(element), num_elements(grid))
+    last_eltindex = Ref(0)
     mappedarray(CartesianIndices(dims)) do I
         qp, eltindex = Tuple(I)
-        conn = get_connectivity(field, grid, eltindex)
-        update!(element, get_allnodes(grid)[conn])
+        if last_eltindex[] != eltindex
+            conn = get_connectivity(field, grid, eltindex)
+            update!(element, get_allnodes(grid)[conn])
+            last_eltindex[] = eltindex
+        end
         dofs = get_elementdofs(field, grid, eltindex)
         interpolate(field, element, nodalvalues[dofs], qp)
     end
