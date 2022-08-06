@@ -106,21 +106,29 @@ function _reinterpret(::VectorField, ::Val{dim}, uᵢ::SVector{L, T}) where {dim
     SVector(ntuple(j -> Tensor(M[:,j]), Val(n)))
 end
 
+@generated function _interpolate(uᵢ::AbstractVector, N::SVector{L}, dNdx::SVector{L}) where {L}
+    u_exps = [:(_otimes(uᵢ[$i], N[$i])) for i in 1:L]
+    dudx_exps = [:(_otimes(uᵢ[$i], dNdx[$i])) for i in 1:L]
+    quote
+        @_inline_meta
+        @assert length(uᵢ) == L
+        @inbounds begin
+            u = +($(u_exps...))
+            dudx = +($(dudx_exps...))
+        end
+        dual_gradient(u, dudx)
+    end
+end
+
 function interpolate(element::SingleElement, uᵢ::AbstractVector, qp::Int)
-    @assert num_nodes(element) == length(uᵢ)
     @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds N, dNdx = element.N[qp], element.dNdx[qp]
-    u = mapreduce(_otimes, +, uᵢ, N)
-    dudx = mapreduce(_otimes, +, uᵢ, dNdx)
-    dual_gradient(u, dudx)
+    _interpolate(uᵢ, N, dNdx)
 end
 
 function interpolate(element::SingleElement, uᵢ::AbstractVector, ξ::Vec)
-    @assert num_nodes(element) == length(uᵢ)
     N, dNdx = values_gradients(get_shape(element), ξ)
-    u = mapreduce(_otimes, +, uᵢ, N)
-    dudx = mapreduce(_otimes, +, uᵢ, dNdx)
-    dual_gradient(u, dudx)
+    _interpolate(uᵢ, N, dNdx)
 end
 
 interpolate(fld::SingleField, elt::SingleElement, uᵢ::AbstractVector, qp) =

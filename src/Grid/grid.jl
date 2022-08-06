@@ -84,7 +84,15 @@ create_element(mixed::MixedField, grid::Grid{T, dim}) where {T, dim} = Element{T
 get_elementtype(field::Field, grid::Grid) = Base._return_type(create_element, typeof((field, grid)))
 
 num_allnodes(grid::Grid) = length(get_allnodes(grid))
-num_allnodes(field::Field, grid::Grid) = length(get_allnodes(field, grid))
+function num_allnodes(field::Field, grid::Grid)
+    order = get_order(field, grid)
+    nodes = get_allnodes(grid)
+    n = 0
+    @inbounds @simd for i in 1:order
+        n += length(nodes[Block(i)])
+    end
+    n
+end
 num_elements(grid::Grid) = length(get_connectivities(grid))
 
 num_dofs(field::ScalarField, grid::Grid) = num_allnodes(field, grid)
@@ -117,9 +125,10 @@ end
 function get_elementdofs(field::SingleField, grid::Grid, i::Int; offset::Int = 0)
     dofindices(field, Val(get_dimension(grid)), get_connectivity(field, grid, i)) .+ offset
 end
-function get_elementdofs(mixed::MixedField, grid::Grid, i::Int)
+@inline function get_elementdofs(mixed::MixedField, grid::Grid, i::Int)
     count = Ref(0)
     reduce(vcat, map(mixed.fields) do field
+        @_inline_meta
         offset = count[]
         count[] += num_dofs(field, grid)
         get_elementdofs(field, grid, i; offset)
