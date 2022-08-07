@@ -13,8 +13,11 @@ function get_normal(mixed::MixedElement, qp::Int)
 end
 get_shape_qr(mixed::MixedElement) = get_shape_qr(mixed.elements[1])
 
-function num_dofs(fld::MixedField{N}, mixed::MixedElement{<: Any, <: Any, N}) where {N}
-    mapreduce(num_dofs, +, fld.fields, mixed.elements)
+@generated function num_dofs(fld::MixedField{N}, mixed::MixedElement{<: Any, <: Any, N}) where {N}
+    exps = [:(num_dofs(fld.fields[$i], mixed.elements[$i])) for i in 1:N]
+    quote
+        +($(exps...))
+    end
 end
 function num_quadpoints(mixed::MixedElement)
     num_quadpoints(get_shape_qr(mixed))
@@ -98,14 +101,17 @@ end
 # interpolate #
 ###############
 
-function interpolate(field::MixedField, element::MixedElement, Uᵢ::AbstractVector{<: Real}, qp)
+@pure function _sranges(n::Tuple{Vararg{Int}})
+    stop = cumsum(n)
+    start = @. stop - n + 1
+    @. StaticArrays.SUnitRange(start, stop)
+end
+
+@inline function interpolate(field::MixedField, element::MixedElement, Uᵢ::AbstractVector{<: Real}, qp)
     @assert num_dofs(field, element) == length(Uᵢ)
-    count = Ref(1)
-    map(field.fields, element.elements) do fld, elt
-        start = count[]
-        stop = start + num_dofs(fld, elt) - 1
-        count[] = stop + 1
-        uᵢ = _reinterpret(fld, Val(get_dimension(elt)), view(Uᵢ, start:stop))
+    rngs = _sranges(map(num_dofs, field.fields, element.elements))
+    map(field.fields, element.elements, rngs) do fld, elt, rng
+        uᵢ = _reinterpret(fld, Val(get_dimension(elt)), Uᵢ[rng])
         interpolate(elt, uᵢ, qp)
     end
 end
