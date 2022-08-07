@@ -21,7 +21,8 @@ function NavierStokesEquation(
     dirichlet = falses(ndofs)
 
     outdir = mkpath(joinpath(dir, "Output"))
-    pvd = openpvd(joinpath(outdir, "NavierStokesEquation"))
+    pvdfile = joinpath(outdir, "NavierStokesEquation")
+    closepvd(openpvd(pvdfile))
 
     timespan = 0.0:0.01:t_stop
     dt = step(timespan)
@@ -63,24 +64,26 @@ function NavierStokesEquation(
         Uₙ .= U
 
         if step % 10 == 0
-            openvtk(joinpath(outdir, "NavierStokesEquation_$step"), decrease_order(grid)) do vtk
-                U_u, U_p = gridvalues(U, field, grid)
-                # compute vorticity by L2 projection
-                Ũ = interpolate(field, grid, U)
-                ωV = integrate(ScalarField(1), grid) do i, ϕ
-                    ũ, p̃ = Ũ[i]
-                    (∇(ũ)[1,2] - ∇(ũ)[2,1]) * ϕ
+            openpvd(pvdfile; append = true) do pvd
+                grid_lower = decrease_order(grid)
+                openvtk(joinpath(outdir, "NavierStokesEquation_$step"), grid_lower) do vtk
+                    U_u, U_p = gridvalues(U, field, grid)
+                    # compute vorticity by L2 projection
+                    Ũ = interpolate(field, grid, U)
+                    ωV = integrate(ScalarField(), grid_lower) do i, ϕ
+                        ũ, p̃ = Ũ[i]
+                        (∇(ũ)[1,2] - ∇(ũ)[2,1]) * ϕ
+                    end
+                    V = integrate((i,ϕ)->ϕ, ScalarField(), grid_lower)
+                    # save to vtk
+                    vtk["Velocity"] = view(U_u, 1:length(U_p))
+                    vtk["Pressure"] = U_p
+                    vtk["Vorticity"] = ωV ./ V
+                    pvd[t] = vtk
                 end
-                V = integrate((i,ϕ)->ϕ, ScalarField(1), grid)
-                # save to vtk
-                vtk["Velocity"] = view(U_u, 1:length(U_p))
-                vtk["Pressure"] = U_p
-                vtk["Vorticity"] = ωV ./ V
-                pvd[t] = vtk
             end
         end
     end
-    closepvd(pvd)
 
     U
 end

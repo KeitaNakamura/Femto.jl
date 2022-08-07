@@ -163,7 +163,6 @@ end
 
 @pure function convert_integrate_function(f, eltindex)
     @inline function f′(qp, args...)
-        @_propagate_inbounds_meta
         f(CartesianIndex(qp, eltindex), args...)
     end
 end
