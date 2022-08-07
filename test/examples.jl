@@ -41,4 +41,8 @@
         @test norm(StokesEquation(readgmsh("../examples/StokesEquation/model.msh"))) ≈ 840.7761276984636
         @test norm(StokesEquation(generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1))) ≈ 117403.00599179954
     end
+    @testset "NavierStokesEquation" begin
+        include("../examples/NavierStokesEquation/NavierStokesEquation.jl")
+        @test norm(NavierStokesEquation(readgmsh("../examples/NavierStokesEquation/model.msh"); t_stop=0.05)) ≈ 91.01912639824289
+    end
 end
