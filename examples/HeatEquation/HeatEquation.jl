@@ -14,7 +14,7 @@ function HeatEquation(field::Field, gridset::Dict; dir::String = @__DIR__)
     dirichlet = falses(length(U))
     dirichlet[get_nodedofs(field, gridset["boundary"])] .= true
 
-    solve!(U, K, F, dirichlet)
+    linsolve!(U, K, F, dirichlet)
 
     openvtk(joinpath(dir, "HeatEquation"), field, grid) do vtk
         vtk["Temperature"] = U

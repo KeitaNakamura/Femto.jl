@@ -67,7 +67,8 @@ export
     generate_elementstate,
     gridvalues,
     # solve
-    solve!,
+    linsolve!,
+    nlsolve!,
     # gmsh
     readgmsh,
     # vtk

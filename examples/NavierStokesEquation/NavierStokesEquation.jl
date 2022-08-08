@@ -39,11 +39,10 @@ function NavierStokesEquation(
             dirichlet[dofs] .= true
         end
 
-        # newton iteration
-        for k in 1:20
+        nlsolve!(U, dirichlet) do R, J, U
             Ũ = collect(interpolate(field, grid, U))
 
-            R = (M * (U - Uₙ)) / dt + K * U
+            R .= (M * (U - Uₙ)) / dt + K * U
             integrate!(R, field, grid; zeroinit=false) do i, (v,q)
                 ũ, p̃ = Ũ[i]
                 v ⋅ (∇(ũ) ⋅ ũ)
@@ -53,13 +52,7 @@ function NavierStokesEquation(
                 ũ, p̃ = Ũ[i]
                 v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
             end
-            J = sparse(A) + M/dt + K
-
-            solve!(dU, J, -R, dirichlet)
-            @. U += dU
-            
-            norm(dU) < sqrt(eps(Float64)) && break
-            k == 20 && error("not converged")
+            J .= sparse(A) + M/dt + K
         end
         Uₙ .= U
 
