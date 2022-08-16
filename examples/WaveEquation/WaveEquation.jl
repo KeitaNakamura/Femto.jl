@@ -35,7 +35,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
         else
             F .= 0
         end
-        solve!(Uₙ₊₁, spdiagm(M), M.*(2Uₙ - Uₙ₋₁) - (sparse(K)*Uₙ - F)*dt^2, dirichlet)
+        linsolve!(Uₙ₊₁, spdiagm(M), M.*(2Uₙ - Uₙ₋₁) - (sparse(K)*Uₙ - F)*dt^2, dirichlet)
         Uₙ₋₁ .= Uₙ
         Uₙ .= Uₙ₊₁
 

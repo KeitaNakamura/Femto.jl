@@ -23,7 +23,7 @@ function StokesEquation(gridset::Dict; dir::String = @__DIR__)
     end
     dirichlet[end] = true # handle singularity
 
-    solve!(U, K, F, dirichlet)
+    linsolve!(U, K, F, dirichlet)
 
     openvtk(joinpath(dir, "StokesEquation"), decrease_order(grid)) do vtk
         U_u, U_p = gridvalues(U, field, grid)
