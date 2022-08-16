@@ -221,6 +221,31 @@ function integrate(f, field::Field, grid::Grid)
     F(f, field, grid)
 end
 
+# special version for AD
+
+function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, grid::Grid, U::AbstractVector; zeroinit::Tuple{Bool, Bool} = (true, true))
+    @assert num_dofs(field, grid) == length(U)
+    zeroinit[1] && fillzero!(F)
+    zeroinit[2] && fillzero!(K)
+    element = create_element(field, grid)
+    Fe = create_vector(eltype(F), field, element)
+    Ke = create_matrix(eltype(K), field, element)
+    for eltindex in 1:num_elements(grid)
+        # update element
+        conn = get_connectivity(field, grid, eltindex)
+        update!(element, get_allnodes(grid)[conn])
+        # integration in an element
+        f′ = convert_integrate_function(f, eltindex)
+        fillzero!(Fe)
+        fillzero!(Ke)
+        dofs = get_elementdofs(field, grid, eltindex)
+        integrate!(f′, Fe, Ke, field, element, U[dofs])
+        add!(F, dofs, Fe)
+        add!(K, dofs, Ke)
+    end
+    F, K
+end
+
 ##############
 # gridvalues #
 ##############

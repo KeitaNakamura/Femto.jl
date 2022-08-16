@@ -108,6 +108,32 @@ function integrate!(f, A::AbstractVector, field::Field, element::BodyElementLike
     A
 end
 
+# special version for AD
+function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, element::BodyElementLike, U::SVector)
+    T = typeof(ForwardDiff.Tag(interpolate, eltype(U)))
+    dU = ForwardDiff.dualize(T, U)
+    for qp in 1:num_quadpoints(element)
+        du = interpolate(field, element, dU, qp)
+        @inbounds integrate!(f, F, K, field, element, du, qp)
+    end
+    F, K
+end
+function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, element::BodyElementLike, du, qp::Int)
+    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @inbounds begin
+        v = shape_values(field, element, qp)
+        @assert length(F) == length(v) == size(K,1) == size(K,2)
+        for i in 1:length(v)
+            F_i = f(qp, v[i], du) * get_detJdΩ(element, qp)
+            F[i] += ForwardDiff.value(F_i)
+            @simd for j in 1:length(v)
+                K[i,j] += ForwardDiff.partials(F_i, j)
+            end
+        end
+    end
+    F, K
+end
+
 # FaceElementLike
 function integrate!(f, A::AbstractVector, field::Field, element::FaceElementLike, qp::Int)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
