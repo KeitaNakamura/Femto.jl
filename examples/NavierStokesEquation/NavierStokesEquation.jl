@@ -4,6 +4,7 @@ function NavierStokesEquation(
         gridset::Dict = readgmsh(joinpath(@__DIR__, "model.msh"));
         dir::String = @__DIR__,
         t_stop::Real = 10.0,
+        autodiff::Bool = true,
     )
     field = mixed(VectorField(2), ScalarField(1))
 
@@ -40,17 +41,21 @@ function NavierStokesEquation(
         end
 
         nlsolve!(U, dirichlet) do R, J, U
-            Ũ = collect(interpolate(field, grid, U))
-
             R .= (M * (U - Uₙ)) / dt + K * U
-            integrate!(R, field, grid; zeroinit=false) do i, (v,q)
-                ũ, p̃ = Ũ[i]
-                v ⋅ (∇(ũ) ⋅ ũ)
-            end
-
-            integrate!(A, field, grid) do i, (v,q), (u,p)
-                ũ, p̃ = Ũ[i]
-                v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
+            if autodiff
+                integrate!(R, A, field, grid, U; zeroinit=(false,true)) do i, (v,q), (u,p)
+                    v ⋅ (∇(u) ⋅ u)
+                end
+            else
+                Ũ = collect(interpolate(field, grid, U))
+                integrate!(R, field, grid; zeroinit=false) do i, (v,q)
+                    ũ, p̃ = Ũ[i]
+                    v ⋅ (∇(ũ) ⋅ ũ)
+                end
+                integrate!(A, field, grid) do i, (v,q), (u,p)
+                    ũ, p̃ = Ũ[i]
+                    v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
+                end
             end
             J .= sparse(A) + M/dt + K
         end
