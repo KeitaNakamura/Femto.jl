@@ -13,10 +13,10 @@ end
 
 for DT in (:ScalarGradient, :ScalarProjection)
     @eval begin
-        Base.promote_rule(::Type{<: $DT{T}}, ::Type{U}) where {T, U <: Real} = promote_type(T, U)
+        Base.promote_rule(::Type{<: $DT{T}}, ::Type{U}) where {T <: Real, U <: Real} = promote_type(T, U)
         Base.convert(::Type{T}, x::$DT) where {T <: Real} = convert(T, x.scalar)
-        Base.convert(::Type{$DT{T, D}}, x::$DT{T, D}) where {T, D} = x
-        Base.zero(::Type{$DT{T, D}}) where {T, D} = $DT(zero(T), zero(D))
+        Base.convert(::Type{$DT{T, D}}, x::$DT{T, D}) where {T <: Real, D} = x
+        Base.zero(::Type{$DT{T, D}}) where {T <: Real, D} = $DT(zero(T), zero(D))
         Base.AbstractFloat(x::$DT) = AbstractFloat(x.scalar)
     end
     for op in (:+, :-, :*, :/)
