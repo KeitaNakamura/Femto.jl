@@ -43,6 +43,7 @@
     end
     @testset "NavierStokesEquation" begin
         include("../examples/NavierStokesEquation/NavierStokesEquation.jl")
-        @test norm(NavierStokesEquation(readgmsh("../examples/NavierStokesEquation/model.msh"); t_stop=0.05)) ≈ 91.01912639824289
+        @test norm(NavierStokesEquation(readgmsh("../examples/NavierStokesEquation/model.msh"); t_stop=0.05, autodiff=true)) ≈ 91.01912639824289
+        @test norm(NavierStokesEquation(readgmsh("../examples/NavierStokesEquation/model.msh"); t_stop=0.05, autodiff=false)) ≈ 91.01912639824289
     end
 end

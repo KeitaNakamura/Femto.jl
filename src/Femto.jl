@@ -5,6 +5,7 @@ using StaticArrays
 using StructArrays
 using MappedArrays
 using BlockArrays
+using ForwardDiff
 @reexport using Tensorial
 
 using Base: @pure, @_inline_meta, @_propagate_inbounds_meta
