@@ -2,13 +2,19 @@ abstract type Element{T, dim} end
 
 ## core constructors
 # single
-Element{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim} = SingleBodyElement{T}(shape, shape_qr)
+Element{T}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim} = Element{T, dim}(shape, shape_qr)
 Element{T, dim}(shape::Shape{dim}, shape_qr::Shape{dim} = shape) where {T, dim} = SingleBodyElement{T}(shape, shape_qr)
 Element{T, dim}(shape::Shape{shape_dim}, shape_qr::Shape{shape_dim} = shape) where {T, dim, shape_dim} = SingleFaceElement{T, dim}(shape, shape_qr)
 # mixed
-Element{T}(shapes::Tuple{Vararg{Shape{dim}}}, shape_qr::Shape{dim} = default_quadrature_shape(shapes)) where {T, dim} = MixedBodyElement{T}(shapes, shape_qr)
-Element{T, dim}(shapes::Tuple{Vararg{Shape{dim}}}, shape_qr::Shape{dim} = default_quadrature_shape(shapes)) where {T, dim} = MixedBodyElement{T}(shapes, shape_qr)
-Element{T, dim}(shapes::Tuple{Vararg{Shape{shape_dim}}}, shape_qr::Shape{shape_dim} = default_quadrature_shape(shapes)) where {T, dim, shape_dim} = MixedFaceElement{T, dim}(shapes, shape_qr)
+Element{T}(shapes::Tuple{Vararg{Shape{dim}}}, shape_qr::Shape{dim} = default_quadrature_shape(shapes)) where {T, dim} = Element{T, dim}(shapes, shape_qr)
+function Element{T, dim}(shapes::Tuple{Vararg{Shape{dim}}}, shape_qr::Shape{dim} = default_quadrature_shape(shapes)) where {T, dim}
+    @assert samefamily(shape_qr, shapes...)
+    MixedBodyElement{T}(shapes, shape_qr)
+end
+function Element{T, dim}(shapes::Tuple{Vararg{Shape{shape_dim}}}, shape_qr::Shape{shape_dim} = default_quadrature_shape(shapes)) where {T, dim, shape_dim}
+    @assert samefamily(shape_qr, shapes...)
+    MixedFaceElement{T, dim}(shapes, shape_qr)
+end
 
 # single
 Element(::Type{T}, shape::Shape, shape_qr::Shape = shape) where {T} = Element{T}(shape, shape_qr)

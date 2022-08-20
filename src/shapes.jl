@@ -19,6 +19,7 @@ end
 @pure get_lower_shapes(shape::Shape) = _get_lower_shapes((), shape)
 
 mixed(shapes::Shape...) = shapes
+@pure samefamily(shapes::Shape...) = length(unique(map(supertype∘typeof, shapes)))==1
 
 ########
 # Line #
