@@ -1,9 +1,9 @@
 const BodyElementLike{T, dim} = Union{SingleBodyElement{T, dim}, MixedBodyElement{T, dim}}
 const FaceElementLike{T, dim} = Union{SingleFaceElement{T, dim}, MixedFaceElement{T, dim}}
 
-##########
-# common #
-##########
+#########
+# utils #
+#########
 
 function create_matrix(::Type{T}, field::Field, element::Element) where {T}
     m = n = num_dofs(field, element)
@@ -14,7 +14,10 @@ function create_vector(::Type{T}, field::Field, element::Element) where {T}
     zeros(T, n)
 end
 
-# infer
+#########
+# infer #
+#########
+
 infer_integrate_matrix_eltype(f, args...) = _infer_integrate_matrix_eltype(f, map(typeof, args)...)
 infer_integrate_vector_eltype(f, args...) = _infer_integrate_vector_eltype(f, map(typeof, args)...)
 infer_integrate_eltype(f, args...) = _infer_integrate_eltype(f, map(typeof, args)...)

@@ -76,6 +76,8 @@ end
             N' * N * dΩ
         end
         @test integrate((qp,v,u) -> v*u, Sf(), element) ≈ M
+        @test integrate((qp,v,u) -> v*u, Sf(1), element) ≈ M
+        @test_throws Exception integrate((qp,v,u) -> v*u, Sf(2), element)
         # stiffness matrix
         K = sum(1:Femto.num_quadpoints(element)) do qp
             B = reduce(hcat, element.dNdx[qp])
@@ -83,6 +85,8 @@ end
             B' * B * dΩ
         end
         @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(), element) ≈ K
+        @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(1), element) ≈ K
+        @test_throws Exception integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(2), element)
         # element vector
         F = sum(1:Femto.num_quadpoints(element)) do qp
             N = element.N[qp]
@@ -90,6 +94,8 @@ end
             N * dΩ
         end
         @test integrate((qp,v) -> v, Sf(), element) ≈ F
+        @test integrate((qp,v) -> v, Sf(1), element) ≈ F
+        @test_throws Exception integrate((qp,v) -> v, Sf(2), element)
     end
     @testset "VectorField" begin
         element = Element(Quad4())
@@ -103,6 +109,8 @@ end
             N' * N * dΩ
         end
         @test integrate((qp,v,u) -> v⋅u, Vf(), element) ≈ M
+        @test integrate((qp,v,u) -> v⋅u, Vf(1), element) ≈ M
+        @test_throws Exception integrate((qp,v,u) -> v⋅u, Vf(2), element)
         # stiffness matrix
         ke = rand(SymmetricFourthOrderTensor{2})
         K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -114,6 +122,8 @@ end
             B' * tovoigt(ke) *  B * dΩ
         end
         @test integrate((qp,v,u) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), Vf(), element) ≈ K
+        @test integrate((qp,v,u) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), Vf(1), element) ≈ K
+        @test_throws Exception integrate((qp,v,u) -> symmetric(∇(v)) ⊡ ke ⊡ symmetric(∇(u)), Vf(2), element)
         # element vector
         σ = rand(SymmetricSecondOrderTensor{2})
         F = sum(1:Femto.num_quadpoints(element)) do qp
@@ -125,6 +135,8 @@ end
             B' * tovoigt(σ) * dΩ
         end
         @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), Vf(), element) ≈ F
+        @test integrate((qp,v) -> σ ⊡ symmetric(∇(v)), Vf(1), element) ≈ F
+        @test_throws Exception integrate((qp,v) -> σ ⊡ symmetric(∇(v)), Vf(2), element)
     end
 end
 
@@ -143,6 +155,8 @@ end
             p * N * dΩ
         end
         @test integrate((qp,n,v) -> (p * v), Sf(), element) ≈ F
+        @test integrate((qp,n,v) -> (p * v), Sf(1), element) ≈ F
+        @test_throws Exception integrate((qp,n,v) -> (p * v), Sf(2), element)
     end
     @testset "VectorField" begin
         @testset "dim = 2" begin
@@ -159,6 +173,8 @@ end
                 p * N' * normal * dΩ
             end
             @test integrate((qp,n,v) -> p*n ⋅ v, Vf(), element) ≈ F
+            @test integrate((qp,n,v) -> p*n ⋅ v, Vf(1), element) ≈ F
+            @test_throws Exception integrate((qp,n,v) -> p*n ⋅ v, Vf(2), element)
         end
         @testset "dim = 3" begin
             element = FaceElement(Quad4())
@@ -175,6 +191,8 @@ end
                 p * N' * normal * dΩ
             end
             @test integrate((qp,n,v) -> p*n ⋅ v, Vf(), element) ≈ F
+            @test integrate((qp,n,v) -> p*n ⋅ v, Vf(1), element) ≈ F
+            @test_throws Exception integrate((qp,n,v) -> p*n ⋅ v, Vf(2), element)
         end
     end
 end
@@ -201,6 +219,9 @@ end
              p'*dudx_v  p'*p] * dΩ
         end
         @test integrate(f, field, element) ≈ K
+        @test integrate(f, mixed(Vf(2), Sf(1)), element) ≈ K
+        @test_throws Exception integrate(f, mixed(Vf(1), Sf(1)), element)
+        @test_throws Exception integrate(f, mixed(Vf(2), Sf(2)), element)
     end
     @testset "MixedFaceElement integration" begin
         field = mixed(VectorField(), ScalarField())
@@ -222,6 +243,9 @@ end
             vec(vcat(u' * Vector(a), p' * b)) * dΩ
         end
         @test integrate(f, field, element) ≈ F
+        @test integrate(f, mixed(Vf(2), Sf(1)), element) ≈ F
+        @test_throws Exception integrate(f, mixed(Vf(1), Sf(1)), element)
+        @test_throws Exception integrate(f, mixed(Vf(2), Sf(2)), element)
     end
     @testset "interpolate" begin
         # field
@@ -242,5 +266,8 @@ end
         mixed_U = interpolate(mixed_fld, mixed_elt, Ui)
         @test interpolate(fld1, elt1, Ui[1:n1]) ≈ map(u->u[1], mixed_U)
         @test interpolate(fld2, elt2, Ui[n1+1:n]) ≈ map(u->u[2], mixed_U)
+        # wrong interpolation order
+        @test_throws Exception interpolate(fld2, elt1, Ui[1:n1])
+        @test_throws Exception interpolate(fld1, elt2, Ui[n1+1:n])
     end
 end
