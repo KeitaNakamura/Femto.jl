@@ -14,6 +14,12 @@ get_local_coordinates(elt::SingleElement{T}) where {T} = get_local_coordinates(T
 quadpoints(elt::SingleElement{T}) where {T} = quadpoints(T, get_shape_qr(elt))
 quadweights(elt::SingleElement{T}) where {T} = quadweights(T, get_shape_qr(elt))
 
+function check_order(field::SingleField, element::SingleElement)
+    if get_order(field) !== nothing && get_order(field) != get_order(get_shape(element))
+        throw(ArgumentError("interpolation orders must match"))
+    end
+end
+
 #####################
 # SingleBodyElement #
 #####################
@@ -131,8 +137,10 @@ function interpolate(element::SingleElement, uᵢ::AbstractVector, ξ::Vec)
     _interpolate(uᵢ, N, dNdx)
 end
 
-interpolate(fld::SingleField, elt::SingleElement, uᵢ::AbstractVector, qp) =
-    interpolate(elt, _reinterpret(fld, Val(get_dimension(elt)), uᵢ), qp)
+function interpolate(field::SingleField, element::SingleElement, uᵢ::AbstractVector, qp)
+    check_order(field, element)
+    interpolate(element, _reinterpret(field, Val(get_dimension(element)), uᵢ), qp)
+end
 
 ##############################
 # shape values and gradients #
@@ -169,11 +177,13 @@ end
 
 function shape_values(field::SingleField, element::SingleBodyElement, qp::Int)
     @_propagate_inbounds_meta
+    check_order(field, element)
     dim = get_dimension(element)
     map(dual_gradient, shape_values(field, Val(dim), element.N[qp]), shape_gradients(field, Val(dim), element.dNdx[qp]))
 end
 function shape_values(field::SingleField, element::SingleFaceElement, qp::Int)
     @_propagate_inbounds_meta
+    check_order(field, element)
     dim = get_dimension(element)
     shape_values(field, Val(dim), element.N[qp])
 end

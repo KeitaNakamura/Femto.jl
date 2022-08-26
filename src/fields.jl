@@ -10,7 +10,7 @@ const Vf = VectorField
 @pure VectorField() = VectorField{nothing}()
 @pure ScalarField(order::Int) = ScalarField{order}()
 @pure VectorField(order::Int) = VectorField{order}()
-@pure get_order(::SingleField{order}) where {order} = order::Int
+@pure get_order(::SingleField{order}) where {order} = order
 
 struct MixedField{N, Fields <: NTuple{N, SingleField}} <: Field
     fields::Fields
