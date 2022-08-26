@@ -30,8 +30,8 @@ function NavierStokesEquation(
 
     for (step, t) in enumerate(timespan)
         for dofs in get_nodedofs(field, gridset["left"])[1]
-            nodes = get_allnodes(grid)
-            x, y = reinterpret(eltype(eltype(nodes)), nodes)[dofs]
+            nodes = get_allnodes_flatten(grid)
+            x, y = nodes[dofs]
             U[dofs] = Vec(4v_max*y*(0.41-y)/0.41^2, 0) # parabolic inflow
             dirichlet[dofs] .= true
         end

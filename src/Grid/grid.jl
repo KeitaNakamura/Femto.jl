@@ -42,6 +42,10 @@ function get_allnodes(grid::Grid, order::Int)
     @inbounds view(nodes, inds)
 end
 get_allnodes(field::Field, grid::Grid) = get_allnodes(grid, get_order(field, grid))
+function get_allnodes_flatten(grid::Grid)
+    nodes = get_allnodes(grid)
+    reinterpret(reshape, eltype(eltype(nodes)), nodes)
+end
 
 get_nodeindices(grid::Grid) = grid.nodeindices
 function get_nodeindices(grid::Grid, order::Int)
