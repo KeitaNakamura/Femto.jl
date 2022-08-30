@@ -18,7 +18,6 @@ function NavierStokesEquation(
     A = SparseMatrixCOO(ndofs, ndofs)
     U = zeros(ndofs)
     Uₙ = zeros(ndofs)
-    dU = zeros(ndofs)
     dirichlet = falses(ndofs)
 
     outdir = mkpath(joinpath(dir, "Output"))
