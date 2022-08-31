@@ -62,19 +62,22 @@ function NavierStokesEquation(
 
         if step % 10 == 0
             openpvd(pvdfile; append = true) do pvd
-                grid_lower = decrease_order(grid)
-                openvtk(joinpath(outdir, "NavierStokesEquation_$step"), grid_lower) do vtk
+                openvtk(joinpath(outdir, "NavierStokesEquation_$step"), grid) do vtk
                     U_u, U_p = gridvalues(U, field, grid)
-                    # compute vorticity by L2 projection
-                    Ũ = interpolate(field, grid, U)
-                    ωV = integrate(ScalarField(), grid_lower) do i, ϕ
+                    # compute pressure and vorticity by L2 projection
+                    Ũ = collect(interpolate(field, grid, U))
+                    V = integrate((i,ϕ)->1.0, ScalarField(), grid)
+                    pV = integrate(ScalarField(), grid) do i, ϕ
                         ũ, p̃ = Ũ[i]
-                        (∇(ũ)[1,2] - ∇(ũ)[2,1]) * ϕ
+                        p̃
                     end
-                    V = integrate((i,ϕ)->ϕ, ScalarField(), grid_lower)
+                    ωV = integrate(ScalarField(), grid) do i, ϕ
+                        ũ, p̃ = Ũ[i]
+                        ∇(ũ)[1,2] - ∇(ũ)[2,1]
+                    end
                     # save to vtk
-                    vtk["Velocity"] = view(U_u, 1:length(U_p))
-                    vtk["Pressure"] = U_p
+                    vtk["Velocity"] = U_u
+                    vtk["Pressure"] = pV ./ V
                     vtk["Vorticity"] = ωV ./ V
                     pvd[t] = vtk
                 end
