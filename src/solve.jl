@@ -28,17 +28,18 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, diri
 end
 linsolve!(U::AbstractVector, K::SparseMatrixCOO, F::AbstractVector, dirichlet::AbstractVector{Bool}) = linsolve!(U, sparse(K), F, dirichlet)
 
-function nlsolve!(f!, U::AbstractVector, dirichlet::AbstractVector{Bool}, args...; maxiter::Int=20, tol::Real=1e-8)
+function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, args...; maxiter::Int=20, tol::Real=1e-8) where {T <: Real}
     @assert length(U) == length(dirichlet)
     n = length(U)
-    R = zeros(n)
-    dU = zeros(n)
-    J = spzeros(n, n)
+    R = zeros(T, n)
+    dU = zeros(T, n)
+    J = spzeros(T, n, n)
+    fdofs = findall(.!dirichlet)
     for step in 1:maxiter
         f!(R, J, U, args...)
-        fdofs = findall(.!dirichlet)
-        @inbounds dU[fdofs] = J[fdofs, fdofs] \ -R[fdofs]
-        @. U += dU
+        @inbounds dU[fdofs] = J[fdofs, fdofs] \ R[fdofs]
+        @. U -= dU
+        norm(dU)<tol && norm(U)<tol && return
         norm(dU)/norm(U) < tol && return
     end
     error("not converged")
