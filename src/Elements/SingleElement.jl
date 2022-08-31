@@ -47,7 +47,7 @@ function update!(element::SingleBodyElement, xᵢ::AbstractVector{<: Vec})
     @assert num_nodes(element) == length(xᵢ)
     @inbounds for (i, (ξ, w)) in enumerate(zip(quadpoints(element), quadweights(element)))
         Nᵢ, dNᵢdξ = values_gradients(get_shape(element), ξ)
-        J = mapreduce(⊗, +, xᵢ, dNᵢdξ)
+        J = sum(xᵢ .⊗ dNᵢdξ)
         element.N[i] = Nᵢ
         element.dNdx[i] = dNᵢdξ .⋅ inv(J)
         element.detJdΩ[i] = w * det(J)
