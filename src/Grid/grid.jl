@@ -208,21 +208,21 @@ end
 
 ## integrate!
 for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractVector, :create_vector))
-    @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; zeroinit::Bool = true)
+    @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; zeroinit::Bool=true, kwargs...)
         Ke = $create_array(eltype(A), field, create_element(field, grid))
         integrate_lowered!(A, field, grid; zeroinit) do eltindex, element
             f′ = convert_integrate_function(f, eltindex)
             fillzero!(Ke)
-            integrate!(f′, Ke, field, element)
+            integrate!(f′, Ke, field, element; kwargs...)
             Ke
         end
     end
 end
 
 # integrate
-function integrate(f, field::Field, grid::Grid)
+function integrate(f, field::Field, grid::Grid; kwargs...)
     F = integrate_function(f, get_elementtype(field, grid))
-    F(f, field, grid)
+    F(f, field, grid; kwargs...)
 end
 
 # special version for AD

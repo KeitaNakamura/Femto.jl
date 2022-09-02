@@ -76,7 +76,9 @@ end
             N' * N * dΩ
         end
         @test integrate((qp,v,u) -> v*u, Sf(), element) ≈ M
+        @test integrate((qp,v,u) -> v*u, Sf(), element; symmetric=true) ≈ M
         @test integrate((qp,v,u) -> v*u, Sf(1), element) ≈ M
+        @test integrate((qp,v,u) -> v*u, Sf(1), element; symmetric=true) ≈ M
         @test_throws Exception integrate((qp,v,u) -> v*u, Sf(2), element)
         # stiffness matrix
         K = sum(1:Femto.num_quadpoints(element)) do qp
@@ -85,7 +87,9 @@ end
             B' * B * dΩ
         end
         @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(), element) ≈ K
+        @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(), element; symmetric=true) ≈ K
         @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(1), element) ≈ K
+        @test integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(1), element; symmetric=true) ≈ K
         @test_throws Exception integrate((qp,v,u) -> ∇(v)⋅∇(u), Sf(2), element)
         # element vector
         F = sum(1:Femto.num_quadpoints(element)) do qp
