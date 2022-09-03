@@ -19,15 +19,21 @@ function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::SparseMa
     end
 end
 
+function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector; symmetric::Bool=false)
+    @assert length(U) == size(K, 1) == size(K, 2) == length(F)
+    if symmetric
+        @inbounds U .= Symmetric(K) \ F
+    else
+        @inbounds U .= K \ F
+    end
+    U
+end
+
 function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, dirichlet::AbstractVector{Bool}; symmetric::Bool=false)
     @assert length(U) == size(K, 1) == size(K, 2) == length(F) == length(dirichlet)
     dirichlet_to_neumann!(F, U, K, dirichlet)
     fdofs = findall(.!dirichlet)
-    if symmetric
-        @inbounds U[fdofs] = Symmetric(K[fdofs, fdofs]) \ F[fdofs]
-    else
-        @inbounds U[fdofs] = K[fdofs, fdofs] \ F[fdofs]
-    end
+    @inbounds linsolve!(view(U, fdofs), K[fdofs, fdofs], F[fdofs]; symmetric)
     U
 end
 linsolve!(U::AbstractVector, K::SparseMatrixCOO, F::AbstractVector, dirichlet::AbstractVector{Bool}; symmetric::Bool=false) = linsolve!(U, sparse(K), F, dirichlet; symmetric)
@@ -41,11 +47,7 @@ function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, arg
     fdofs = findall(.!dirichlet)
     for step in 1:maxiter
         f!(R, J, U, args...)
-        if symmetric
-            @inbounds dU[fdofs] = Symmetric(J[fdofs, fdofs]) \ R[fdofs]
-        else
-            @inbounds dU[fdofs] = J[fdofs, fdofs] \ R[fdofs]
-        end
+        @inbounds linsolve!(view(dU, fdofs), J[fdofs,fdofs], R[fdofs]; symmetric)
         @. U -= dU
         norm(dU)<tol && norm(U)<tol && return
         norm(dU)/norm(U) < tol && return
