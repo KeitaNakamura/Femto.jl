@@ -77,7 +77,21 @@ function integrate(f, element::Element)
 end
 
 ## integrate!
-function integrate!(f, A::AbstractArray, field::Field, element::Element)
+function integrate!(f, A::AbstractMatrix, field::Field, element::Element; symmetric::Bool=false)
+    for qp in 1:num_quadpoints(element)
+        integrate!(f, A, field, element, qp; symmetric)
+    end
+    if symmetric
+        @assert size(A, 1) == size(A, 2)
+        @inbounds for j in 1:size(A, 2)
+            for i in 1:j-1
+                A[j,i] = A[i,j]
+            end
+        end
+    end
+    A
+end
+function integrate!(f, A::AbstractVector, field::Field, element::Element)
     for qp in 1:num_quadpoints(element)
         integrate!(f, A, field, element, qp)
     end
@@ -86,13 +100,14 @@ end
 
 ## integrate! at each quadrature point
 # BodyElementLike
-function integrate!(f, A::AbstractMatrix, field::Field, element::BodyElementLike, qp::Int)
+function integrate!(f, A::AbstractMatrix, field::Field, element::BodyElementLike, qp::Int; symmetric::Bool=false)
     @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = u = shape_values(field, element, qp)
         @assert size(A) == (length(v), length(u))
         for j in 1:length(u)
-            @simd for i in 1:length(v)
+            i_stop = ifelse(symmetric, j, length(v))
+            @simd for i in 1:i_stop
                 A[i,j] += f(qp, v[i], u[j]) * get_detJdΩ(element, qp)
             end
         end
@@ -150,12 +165,12 @@ function integrate!(f, A::AbstractVector, field::Field, element::FaceElementLike
     A
 end
 
-function integrate(f, field::Field, element::Element)
+function integrate(f, field::Field, element::Element; kwargs...)
     F = integrate_function(f, typeof(element))
-    F(f, field, element)
+    F(f, field, element; kwargs...)
 end
 
-function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
+@pure function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
     nargs = first(methods(f)).nargs - 1
     # integrate
     Elt <: BodyElementLike && nargs == 3 && return integrate_matrix
