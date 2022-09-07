@@ -79,6 +79,11 @@ function _connectivity(::Line3, I::CartesianIndex{1})
     i = I[1]
     (CI(i), CI(i+2), CI(i+1))
 end
+function _connectivity(::Line4, I::CartesianIndex{1})
+    CI = CartesianIndex
+    i = I[1]
+    (CI(i), CI(i+3), CI(i+1), CI(i+2))
+end
 function _connectivity(::Quad4, I::CartesianIndex{2})
     CI = CartesianIndex
     i, j = I[1], I[2]

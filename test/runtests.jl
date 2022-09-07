@@ -5,10 +5,13 @@ using Random
 using SparseArrays
 using StaticArrays
 
+using Femto: Line, Quad, Hex, Tri, Tet
+
 function allshapes()
     tuple(
         Line2(),
         Line3(),
+        Line4(),
         Quad4(),
         Quad9(),
         Hex8(),

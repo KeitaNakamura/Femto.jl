@@ -46,6 +46,7 @@ export
     Shape,
     Line2,
     Line3,
+    Line4,
     Quad4,
     Quad9,
     Hex8,

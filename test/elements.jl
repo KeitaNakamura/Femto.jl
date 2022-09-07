@@ -1,16 +1,12 @@
-get_volume(::Line2) = 2
-get_volume(::Line3) = 2
-get_volume(::Quad4) = 4
-get_volume(::Quad9) = 4
-get_volume(::Hex8) = 8
-get_volume(::Hex27) = 8
-get_volume(::Tri3) = 1/2
-get_volume(::Tri6) = 1/2
-get_volume(::Tet4) = 1/6
-get_volume(::Tet10) = 1/6
+get_volume(::Line) = 2
+get_volume(::Quad) = 4
+get_volume(::Hex) = 8
+get_volume(::Tri) = 1/2
+get_volume(::Tet) = 1/6
 
 highorder(::Line2) = Line3()
-highorder(::Line3) = nothing
+highorder(::Line3) = Line4()
+highorder(::Line4) = nothing
 highorder(::Quad4) = Quad9()
 highorder(::Quad9) = nothing
 highorder(::Hex8)  = Hex27()
