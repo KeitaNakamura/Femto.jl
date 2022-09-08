@@ -16,11 +16,18 @@
     ## symmetric
     Us1 = zeros(50)
     # SparseMatrixCSC
-    linsolve!(U1, K+K', F, dirichlet; symmetric=false)
-    linsolve!(Us1, K+K', F, dirichlet; symmetric=true)
+    linsolve!(U1, K+K', F, dirichlet)
+    linsolve!(Us1, Symmetric(K+K'), F, dirichlet)
     # Matrix
     Us2 = zeros(50)
-    linsolve!(U2, Array(K+K'), F, dirichlet; symmetric=false)
-    linsolve!(Us2, Array(K+K'), F, dirichlet; symmetric=true)
+    linsolve!(U2, Array(K+K'), F, dirichlet)
+    linsolve!(Us2, Symmetric(Array(K+K')), F, dirichlet)
     @test U1 ≈ U2 ≈ Us1 ≈ Us2
+
+    ## diagonal
+    V = rand(50)
+    Ud = zeros(50)
+    linsolve!(U1, Array(Diagonal(V)), F, dirichlet)
+    linsolve!(Ud, Diagonal(V), F, dirichlet)
+    @test U1 ≈ Ud
 end
