@@ -1,9 +1,11 @@
 abstract type Shape{dim} end
+struct NoShape end
 
 get_local_coordinates(s::Shape) = get_local_coordinates(Float64, s)
 get_dimension(s::Shape{dim}) where {dim} = dim
 quadpoints(s::Shape) = quadpoints(Float64, s)
 quadweights(s::Shape) = quadweights(Float64, s)
+num_nodes(::NoShape) = 0
 
 # values_gradients
 @inline function values_gradients(shape::Shape, X::Vec)
@@ -115,6 +117,57 @@ function quadpoints(::Type{T}, ::Line3) where {T}
 end
 function quadweights(::Type{T}, ::Line3) where {T}
     NTuple{2, T}((1, 1))
+end
+
+"""
+    Line4()
+
+# Geometry
+```
+      η
+      ^
+      |
+      |
+1---3---4---2 --> ξ
+```
+"""
+struct Line4 <: Line end
+
+@pure get_order(::Line4) = 3
+@pure num_nodes(::Line4) = 4
+@pure num_quadpoints(::Line4) = 3
+# @pure decrease_order(::Line4) = Line2()
+@pure get_lower_shapes(::Line4) = (Line2(), NoShape(), Line4())
+
+function get_local_coordinates(::Type{T}, ::Line4) where {T}
+    SVector{4, Vec{1, T}}(
+        (-1.0,),
+        ( 1.0,),
+        (-1/3,),
+        ( 1/3,),
+    )
+end
+
+function Base.values(::Line4, X::Vec{1, T}) where {T}
+    ξ = X[1]
+    SVector{4, T}(
+        -0.5625 * (ξ+1/3)*(ξ-1/3)*(ξ-1),
+         0.5625 * (ξ+1)*(ξ+1/3)*(ξ-1/3),
+         1.6875 * (ξ+1)*(ξ-1/3)*(ξ-1),
+        -1.6875 * (ξ+1)*(ξ+1/3)*(ξ-1),
+    )
+end
+
+function quadpoints(::Type{T}, ::Line4) where {T}
+    ξ = √(3/5)
+    NTuple{3, Vec{1, T}}((
+        (-ξ,),
+        ( 0,),
+        ( ξ,),
+    ))
+end
+function quadweights(::Type{T}, ::Line4) where {T}
+    NTuple{3, T}((5/9, 8/9, 5/9))
 end
 
 ########

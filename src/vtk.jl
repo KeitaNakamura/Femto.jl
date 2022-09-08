@@ -2,6 +2,7 @@ using WriteVTK
 
 to_vtk_celltype(::Line2) = VTKCellTypes.VTK_LINE
 to_vtk_celltype(::Line3) = VTKCellTypes.VTK_QUADRATIC_EDGE
+to_vtk_celltype(::Line4) = VTKCellTypes.VTK_CUBIC_LINE
 to_vtk_celltype(::Tri3)  = VTKCellTypes.VTK_TRIANGLE
 to_vtk_celltype(::Tri6)  = VTKCellTypes.VTK_QUADRATIC_TRIANGLE
 to_vtk_celltype(::Quad4) = VTKCellTypes.VTK_QUAD
@@ -13,6 +14,7 @@ to_vtk_celltype(::Hex27) = VTKCellTypes.VTK_TRIQUADRATIC_HEXAHEDRON
 
 to_vtk_connectivity(::Line2) = Index(1,2)
 to_vtk_connectivity(::Line3) = Index(1,2,3)
+to_vtk_connectivity(::Line4) = Index(1,2,3,4)
 to_vtk_connectivity(::Tri3)  = Index(1,2,3)
 to_vtk_connectivity(::Tri6)  = Index(1,2,3,4,6,5)
 to_vtk_connectivity(::Quad4) = Index(1,2,3,4)
