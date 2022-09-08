@@ -8,8 +8,8 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     source = gridset["source"]
 
     ndofs = num_dofs(field, grid)
-    K = SparseMatrixCOO(ndofs, ndofs)
-    M = zeros(ndofs)
+    K = sparse(integrate((i,v,u)->∇(v)⋅∇(u), field, grid))
+    M = Diagonal(integrate((i,v)->v, field, grid)) # lumped mass matrix
     F = zeros(ndofs)
 
     Uₙ = zeros(ndofs)
@@ -28,16 +28,14 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
-        integrate!((i,v,u)->∇(v)⋅∇(u), K, field, grid)
-        integrate!((i,v)->v, M, field, grid) # lumped mass matrix
         if t < 0.2
             integrate!((i,v)->v, F, field, source)
         else
             F .= 0
         end
-        linsolve!(Uₙ₊₁, spdiagm(M), M.*(2Uₙ - Uₙ₋₁) - (sparse(K)*Uₙ - F)*dt^2, dirichlet)
-        Uₙ₋₁ .= Uₙ
-        Uₙ .= Uₙ₊₁
+        linsolve!(Uₙ₊₁, M, M*(2Uₙ - Uₙ₋₁) - (K*Uₙ - F)*dt^2, dirichlet)
+        @. Uₙ₋₁ = Uₙ
+        @. Uₙ = Uₙ₊₁
 
         reshape(reinterpret(Float64, get_allnodes(mesh)), 3, num_allnodes(mesh))[3,:] .= 50*Uₙ
 
