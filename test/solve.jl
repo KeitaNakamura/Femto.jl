@@ -33,7 +33,7 @@
     end
     @testset "nlsolve" begin
         Random.seed!(1234)
-        U = [1.0]
+        U = [0.0]
         dirichlet = [false]
         a = rand()
         b = rand()
@@ -43,6 +43,6 @@
             @. J = 2a*U + b
         end
         @test U[1] ≈ (-b+sqrt(b^2-4a*c)) / 2a
-        @test norm(history) ≈ 5.09362408958211
+        @test norm(history) ≈ 1.028666021302189
     end
 end

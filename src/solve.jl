@@ -46,21 +46,22 @@ function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, arg
     J = spzeros(T, n, n)
     fdofs = findall(.!dirichlet)
     history = Float64[]
+    local r0::Float64
     for step in 1:maxiter
         f!(R, J, U, args...)
-        if symmetric
-            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(Symmetric(J), fdofs), R[fdofs])
-        else
-            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(J, fdofs), R[fdofs])
+
+        R′ = R[fdofs]
+        if step == 1
+            r0 = norm(R′)
         end
-        dU_norm = norm(dU)
-        U_norm = norm(U)
-        if dU_norm<tol && U_norm<tol
-            push!(history, 0)
-        else
-            push!(history, dU_norm/U_norm)
-        end
+        push!(history, norm(R′) / r0)
         history[end] < tol && return history
+
+        if symmetric
+            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(Symmetric(J), fdofs), R′)
+        else
+            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(J, fdofs), R′)
+        end
         @. U -= dU
     end
     error("not converged")
