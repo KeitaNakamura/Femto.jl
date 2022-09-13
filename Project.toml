@@ -1,7 +1,7 @@
 name = "Femto"
 uuid = "8a6dffb5-f0a3-43b0-807d-ee99672b66b8"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.6.1"
+version = "0.7.0"
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
