@@ -44,7 +44,7 @@ function nlsolve!(
         U::AbstractVector{T},
         dirichlet::AbstractVector{Bool},
         args...;
-        sparsity_pattern::SparseMatrixCSC,
+        sppat::SparseMatrixCSC = spzeros(T, length(U), length(U)),
         maxiter::Int = 20,
         tol::Real = 1e-8,
         symmetric::Bool = false,
@@ -58,7 +58,7 @@ function nlsolve!(
     history = Float64[]
     local r0::Float64
     for step in 1:maxiter
-        J .= sparsity_pattern
+        J .= sppat
         f!(R, J, U, args...)
 
         R′ = R[fdofs]

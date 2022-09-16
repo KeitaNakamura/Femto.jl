@@ -39,7 +39,7 @@
         a = rand()
         b = rand()
         c = rand()
-        history = nlsolve!(U, dirichlet; sparsity_pattern=sppat) do R, J, U
+        history = nlsolve!(U, dirichlet; sppat) do R, J, U
             @. R = a*U^2 + b*U + c
             @. J = 2a*U + b
         end
