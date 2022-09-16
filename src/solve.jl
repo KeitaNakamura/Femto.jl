@@ -53,9 +53,10 @@ function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, arg
         R′ = R[fdofs]
         if step == 1
             r0 = norm(R′)
+            r0<tol && return history
         end
-        push!(history, norm(R′) / r0)
-        history[end] < tol && return history
+        push!(history, norm(R′)/r0)
+        history[end]<tol && return history
 
         if symmetric
             @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(Symmetric(J), fdofs), R′)
