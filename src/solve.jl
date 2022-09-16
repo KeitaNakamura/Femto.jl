@@ -26,7 +26,8 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector)
 end
 
 get_K_fdofs(K::AbstractMatrix, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; K[fdofs,fdofs])
-get_K_fdofs(K::Symmetric, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Symmetric(K.data[fdofs,fdofs], Symbol(K.uplo)))
+get_K_fdofs(K::SparseMatrixCOO, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; sparse(K)[fdofs,fdofs])
+get_K_fdofs(K::Symmetric, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Symmetric(get_K_fdofs(K.data, fdofs), Symbol(K.uplo)))
 get_K_fdofs(K::Diagonal, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Diagonal(view(diag(K), fdofs)))
 
 function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, dirichlet::AbstractVector{Bool})
@@ -38,7 +39,16 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, diri
 end
 linsolve!(U::AbstractVector, K::SparseMatrixCOO, F::AbstractVector, dirichlet::AbstractVector{Bool}) = linsolve!(U, sparse(K), F, dirichlet)
 
-function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, args...; maxiter::Int=20, tol::Real=1e-8, symmetric::Bool=false) where {T <: Real}
+function nlsolve!(
+        f!,
+        U::AbstractVector{T},
+        dirichlet::AbstractVector{Bool},
+        args...;
+        sparsity_pattern::SparseMatrixCSC,
+        maxiter::Int = 20,
+        tol::Real = 1e-8,
+        symmetric::Bool = false,
+    ) where {T <: Real}
     @assert length(U) == length(dirichlet)
     n = length(U)
     R = zeros(T, n)
@@ -48,6 +58,7 @@ function nlsolve!(f!, U::AbstractVector{T}, dirichlet::AbstractVector{Bool}, arg
     history = Float64[]
     local r0::Float64
     for step in 1:maxiter
+        J .= sparsity_pattern
         f!(R, J, U, args...)
 
         R′ = R[fdofs]

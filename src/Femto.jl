@@ -69,6 +69,7 @@ export
     generate_gridset,
     generate_elementstate,
     gridvalues,
+    sparsity_pattern,
     # solve
     linsolve!,
     nlsolve!,

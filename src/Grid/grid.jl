@@ -269,3 +269,11 @@ function gridvalues(U::AbstractVector, mixed::MixedField, grid::Grid)
         gridvalues(view(U, dofs), field, grid)
     end
 end
+
+####################
+# sparsity_pattern #
+####################
+
+function sparsity_pattern(field::Field, grid::Grid{T}) where {T}
+    sparse(integrate((i,v,u)->zero(T), field, grid))
+end

@@ -15,7 +15,6 @@ function NavierStokesEquation(
 
     K = sparse(integrate((index, (v,q), (u,p)) -> ν * ∇(v) ⊡ ∇(u) - (∇⋅v)*p + q*(∇⋅u), field, grid))
     M = sparse(integrate((index, (v,q), (u,p)) -> v ⋅ u, field, grid))
-    A = SparseMatrixCOO(ndofs, ndofs)
     U = zeros(ndofs)
     Uₙ = zeros(ndofs)
     dirichlet = falses(ndofs)
@@ -39,24 +38,24 @@ function NavierStokesEquation(
             dirichlet[dofs] .= true
         end
 
-        nlsolve!(U, dirichlet) do R, J, U
-            R .= (M * (U - Uₙ)) / dt + K * U
+        nlsolve!(U, dirichlet; sparsity_pattern=K) do R, J, U
             if autodiff
-                integrate!(R, A, field, grid, U; zeroinit=(false,true)) do i, (v,q), (u,p)
+                integrate!(R, J, field, grid, U) do i, (v,q), (u,p)
                     v ⋅ (∇(u) ⋅ u)
                 end
             else
                 Ũ = collect(interpolate(field, grid, U))
-                integrate!(R, field, grid; zeroinit=false) do i, (v,q)
+                integrate!(R, field, grid) do i, (v,q)
                     ũ, p̃ = Ũ[i]
                     v ⋅ (∇(ũ) ⋅ ũ)
                 end
-                integrate!(A, field, grid) do i, (v,q), (u,p)
+                integrate!(J, field, grid) do i, (v,q), (u,p)
                     ũ, p̃ = Ũ[i]
                     v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
                 end
             end
-            J .= sparse(A) + M/dt + K
+            R .= R + (M * (U - Uₙ)) / dt + K * U
+            J .= J + M/dt + K
         end
         Uₙ .= U
 

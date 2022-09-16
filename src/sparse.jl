@@ -41,7 +41,7 @@ function add!(A::SparseMatrixCOO, I::AbstractVector{Int}, J::AbstractVector{Int}
 end
 
 fillzero!(A::SparseMatrixCOO) = (map(empty!, findnz(A)); A)
-fillzero!(A::SparseMatrixCSC) = dropzeros!(fill!(A, 0))
+fillzero!(A::SparseMatrixCSC) = fill!(A, 0)
 SparseArrays.findnz(A::SparseMatrixCOO) = A.I, A.J, A.V
 
 Base.:\(A::SparseMatrixCOO, b::AbstractVector) = sparse(A) \ b
@@ -57,3 +57,32 @@ function Base.show(io::IO, mime::MIME"text/plain", A::SparseMatrixCOO)
     isempty(A.I) || Base.print_array(io, S)
 end
 Base.show(io::IO, A::SparseMatrixCOO) = show(io, sparse(A))
+
+###################
+# SparseMatrixCSC #
+###################
+
+function add!(A::SparseMatrixCSC, I::AbstractVector{Int}, J::AbstractVector{Int}, K::AbstractMatrix)
+    # `I` must be sorted
+    @boundscheck checkbounds(A, I, J)
+    @assert size(K) == map(length, (I, J))
+    rows = rowvals(A)
+    vals = nonzeros(A)
+    perm = sortperm(I)
+    @inbounds for j in 1:length(J)
+        i = 1
+        for k in nzrange(A, J[j])
+            row = rows[k] # row candidate
+            i′ = perm[i]
+            if I[i′] == row
+                vals[k] += K[i′,j]
+                i += 1
+            end
+            i > length(I) && break
+        end
+        if i <= length(I)
+            error("wrong sparsity pattern")
+        end
+    end
+    A
+end
