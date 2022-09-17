@@ -38,7 +38,7 @@ function NavierStokesEquation(
             dirichlet[dofs] .= true
         end
 
-        nlsolve!(U, dirichlet; sparsity_pattern=K) do R, J, U
+        nlsolve!(U, dirichlet; sppat=K) do R, J, U
             if autodiff
                 integrate!(R, J, field, grid, U) do i, (v,q), (u,p)
                     v ⋅ (∇(u) ⋅ u)
