@@ -4,19 +4,23 @@ struct DomainInfo{S <: Shape, L}
     nodeindices::Vector{Int}
 end
 
-function generate_gridset(nodes::Vector{Vec{dim, T}}, domains::Dict{String, DomainInfo}) where {dim, T}
-    bodies = Dict(Iterators.filter(p->get_dimension(p.second.shape)==dim, domains))
-    faces  = Dict(Iterators.filter(p->get_dimension(p.second.shape)!=dim, domains))
+function generate_gridset(nodes::Vector{Vec{dim, T}}, domains::Dict) where {dim, T}
+    grids = generate_gridset(nodes, values(domains))
+    Dict([name=>grid for (name, grid) in zip(keys(domains), grids)])
+end
+function generate_gridset(nodes::Vector{Vec{dim, T}}, domains) where {dim, T}
+    bodies = Iterators.filter(dm->get_dimension(dm.shape)==dim, domains)
+    faces  = Iterators.filter(dm->get_dimension(dm.shape)!=dim, domains)
     perm = get_perm_lower_shapes(
         nodes,
-        only(unique(Iterators.map(p->p.second.shape, bodies))),
-        reduce(vcat, Iterators.map(p->p.second.connectivities, bodies)),
+        only(unique(Iterators.map(b->b.shape, bodies))),
+        reduce(vcat, Iterators.map(b->b.connectivities, bodies)),
     )
     new_nodes = permute_nodes(nodes, perm)
-    Dict{String, Grid{T, dim}}(Iterators.map(domains) do (name, domain)
+    map(domains) do domain
         connectivities, nodeindices = permute_connectivities_nodeindices(domain.connectivities, domain.nodeindices, perm)
-        name => Grid(new_nodes, domain.shape, connectivities, nodeindices)
-    end)
+        Grid(new_nodes, domain.shape, connectivities, nodeindices)
+    end
 end
 
 function get_perm_lower_shapes(nodes::Vector{<: Vec}, shape::Shape, connectivities::Vector{Index{L}}) where {L}
@@ -138,10 +142,10 @@ function primaryindices(dims::Dims{dim}, order::Int) where {dim}
 end
 
 # generate_grid
-grid_args(::Type{T}, shape::Shape, axes::AbstractVector...) where {T} = (T, shape, axes...)
-grid_args(::Type{T}, axes::Vararg{AbstractVector, dim}) where {T, dim} = grid_args(T, default_shapetype(Val(dim)), axes...)
-grid_args(shape::Shape{dim}, axes::Vararg{AbstractVector, dim}) where {dim} = (T = promote_type(map(eltype, axes)...); grid_args(ifelse(T==Int, Float64, T), shape, axes...))
-grid_args(axes::Vararg{AbstractVector, dim}) where {dim} = grid_args(default_shapetype(Val(dim)), axes...)
+grid_args(::Type{T}, shape::Shape, axes::AbstractVector{<: Real}...) where {T} = (T, shape, axes...)
+grid_args(::Type{T}, axes::Vararg{AbstractVector{<: Real}, dim}) where {T, dim} = grid_args(T, default_shapetype(Val(dim)), axes...)
+grid_args(shape::Shape{dim}, axes::Vararg{AbstractVector{<: Real}, dim}) where {dim} = (T = promote_type(map(eltype, axes)...); grid_args(ifelse(T==Int, Float64, T), shape, axes...))
+grid_args(axes::Vararg{AbstractVector{<: Real}, dim}) where {dim} = grid_args(default_shapetype(Val(dim)), axes...)
 
 generate_grid(args...) = _generate_grid(grid_args(args...)...)
 function _generate_grid(::Type{T}, shape::Shape{shape_dim}, axes::Vararg{AbstractVector, dim}) where {T, dim, shape_dim}
