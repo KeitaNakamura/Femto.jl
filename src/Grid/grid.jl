@@ -192,9 +192,8 @@ for infer in (:infer_integrate_matrix_eltype, :infer_integrate_vector_eltype)
 end
 
 ## integrate_lowered!
-function integrate_lowered!(f, A::AbstractArray, field::Field, grid::Grid; zeroinit::Bool = true)
+function integrate_lowered!(f, A::AbstractArray, field::Field, grid::Grid)
     @assert all(==(num_dofs(field, grid)), size(A))
-    zeroinit && fillzero!(A)
     element = create_element(field, grid)
     for eltindex in 1:num_elements(grid)
         conn = get_connectivity(field, grid, eltindex)
@@ -208,9 +207,9 @@ end
 
 ## integrate!
 for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractVector, :create_vector))
-    @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; zeroinit::Bool=true, kwargs...)
+    @eval function integrate!(f, A::$ArrayType, field::Field, grid::Grid; kwargs...)
         Ke = $create_array(eltype(A), field, create_element(field, grid))
-        integrate_lowered!(A, field, grid; zeroinit) do eltindex, element
+        integrate_lowered!(A, field, grid) do eltindex, element
             f′ = convert_integrate_function(f, eltindex)
             fillzero!(Ke)
             integrate!(f′, Ke, field, element; kwargs...)
@@ -229,10 +228,8 @@ end
 
 # special version for AD
 
-function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, grid::Grid, U::AbstractVector; zeroinit::Tuple{Bool, Bool} = (true, true))
+function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, grid::Grid, U::AbstractVector)
     @assert num_dofs(field, grid) == length(U)
-    zeroinit[1] && fillzero!(F)
-    zeroinit[2] && fillzero!(K)
     element = create_element(field, grid)
     Fe = create_vector(eltype(F), field, element)
     Ke = create_matrix(eltype(K), field, element)
