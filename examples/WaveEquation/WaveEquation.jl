@@ -8,7 +8,7 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     source = gridset["source"]
 
     ndofs = num_dofs(field, grid)
-    K = sparse(integrate((i,v,u)->∇(v)⋅∇(u), field, grid))
+    K = integrate((i,v,u)->∇(v)⋅∇(u), field, grid)
     M = Diagonal(integrate((i,v)->v, field, grid)) # lumped mass matrix
     F = zeros(ndofs)
 

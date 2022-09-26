@@ -220,9 +220,11 @@ for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractV
 end
 
 # integrate
+_postprocess(A) = A
+_postprocess(A::SparseMatrixCOO) = sparse(A)
 function integrate(f, field::Field, grid::Grid; kwargs...)
     F = integrate_function(f, get_elementtype(field, grid))
-    F(f, field, grid; kwargs...)
+    _postprocess(F(f, field, grid; kwargs...))
 end
 
 # special version for AD
