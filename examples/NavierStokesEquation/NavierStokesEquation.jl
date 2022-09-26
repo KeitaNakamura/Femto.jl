@@ -13,8 +13,8 @@ function NavierStokesEquation(
     v_max = 1.5
     ν = 1e-3 # kinematic viscosity
 
-    K = sparse(integrate((index, (v,q), (u,p)) -> ν * ∇(v) ⊡ ∇(u) - (∇⋅v)*p + q*(∇⋅u), field, grid))
-    M = sparse(integrate((index, (v,q), (u,p)) -> v ⋅ u, field, grid))
+    K = integrate((index, (v,q), (u,p)) -> ν * ∇(v) ⊡ ∇(u) - (∇⋅v)*p + q*(∇⋅u), field, grid)
+    M = integrate((index, (v,q), (u,p)) -> v ⋅ u, field, grid)
     U = zeros(ndofs)
     Uₙ = zeros(ndofs)
     dirichlet = falses(ndofs)
