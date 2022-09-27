@@ -28,10 +28,9 @@ function WaveEquation(filename = joinpath(@__DIR__, "model.msh"))
     dt = step(timespan)
 
     for (step, t) in enumerate(timespan)
+        F .= 0
         if t < 0.2
             integrate!((i,v)->v, F, field, source)
-        else
-            F .= 0
         end
         linsolve!(Uₙ₊₁, M, M*(2Uₙ - Uₙ₋₁) - (K*Uₙ - F)*dt^2, dirichlet)
         @. Uₙ₋₁ = Uₙ
