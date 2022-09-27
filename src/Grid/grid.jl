@@ -274,5 +274,11 @@ end
 ####################
 
 function sparsity_pattern(field::Field, grid::Grid{T}) where {T}
-    sparse(integrate((i,v,u)->zero(T), field, grid))
+    K = create_matrix(T, field, grid)
+    Ke = create_matrix(T, field, create_element(field, grid))
+    for eltindex in 1:num_elements(grid)
+        dofs = get_elementdofs(field, grid, eltindex)
+        add!(K, dofs, Ke)
+    end
+    sparse(K)
 end
