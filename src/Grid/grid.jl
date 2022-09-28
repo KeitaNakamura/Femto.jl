@@ -43,6 +43,17 @@ function get_allnodes(grid::Grid, order::Int)
 end
 get_allnodes(field::Field, grid::Grid) = get_allnodes(grid, get_order(field, grid))
 
+# for faster getindex
+# `get_allnodes(grid)[inds]` doesn't return `SVector` even using `Index` for `inds`
+@generated function get_nodes(grid::Grid, inds::Index{n}) where {n}
+    exps = [:(nodes[inds[$i]]) for i in 1:n]
+    quote
+        @_inline_meta
+        nodes = get_allnodes(grid)
+        SVector($(exps...))
+    end
+end
+
 get_nodeindices(grid::Grid) = grid.nodeindices
 function get_nodeindices(grid::Grid, order::Int)
     nodeinds = get_nodeindices(grid)
@@ -149,7 +160,7 @@ function interpolate(field::Field, grid::Grid, nodalvalues::AbstractVector)
         qp, eltindex = Tuple(I)
         if last_eltindex[] != eltindex
             conn = get_connectivity(field, grid, eltindex)
-            update!(element, get_allnodes(grid)[conn])
+            update!(element, get_nodes(grid, conn))
             last_eltindex[] = eltindex
         end
         dofs = get_elementdofs(field, grid, eltindex)
@@ -190,7 +201,7 @@ function integrate_lowered!(f, A::AbstractArray, field::Field, grid::Grid)
     element = create_element(field, grid)
     for eltindex in 1:num_elements(grid)
         conn = get_connectivity(field, grid, eltindex)
-        update!(element, get_allnodes(grid)[conn])
+        update!(element, get_nodes(grid, conn))
         Ke = f(eltindex, element)
         dofs = get_elementdofs(field, grid, eltindex)
         add!(A, dofs, Ke)
@@ -227,7 +238,7 @@ function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, grid:
     for eltindex in 1:num_elements(grid)
         # update element
         conn = get_connectivity(field, grid, eltindex)
-        update!(element, get_allnodes(grid)[conn])
+        update!(element, get_nodes(grid, conn))
         # integration in an element
         f′ = convert_integrate_function(f, eltindex)
         fillzero!(Fe)
