@@ -26,7 +26,6 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector)
 end
 
 get_K_fdofs(K::AbstractMatrix, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; K[fdofs,fdofs])
-get_K_fdofs(K::SparseMatrixCOO, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; sparse(K)[fdofs,fdofs])
 get_K_fdofs(K::Symmetric, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Symmetric(get_K_fdofs(K.data, fdofs), Symbol(K.uplo)))
 get_K_fdofs(K::Diagonal, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Diagonal(view(diag(K), fdofs)))
 
@@ -37,7 +36,6 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, diri
     @inbounds linsolve!(view(U, fdofs), get_K_fdofs(K, fdofs), F[fdofs])
     U
 end
-linsolve!(U::AbstractVector, K::SparseMatrixCOO, F::AbstractVector, dirichlet::AbstractVector{Bool}) = linsolve!(U, sparse(K), F, dirichlet)
 
 function nlsolve!(
         f!,

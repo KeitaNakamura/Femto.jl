@@ -172,10 +172,7 @@ end
 end
 
 function create_matrix(::Type{T}, field::Field, grid::Grid) where {T}
-    m = n = num_dofs(field, grid)
-    element = create_element(field, grid)
-    sizehint = num_dofs(field, element)^2 * num_elements(grid)
-    SparseMatrixCOO{T}(m, n; sizehint)
+    sparsity_pattern(T, field, grid)
 end
 function create_vector(::Type{T}, field::Field, grid::Grid) where {T}
     n = num_dofs(field, grid)
@@ -219,11 +216,9 @@ for (ArrayType, create_array) in ((:AbstractMatrix, :create_matrix), (:AbstractV
 end
 
 # integrate
-_postprocess(A) = A
-_postprocess(A::SparseMatrixCOO) = sparse(A)
 function integrate(f, field::Field, grid::Grid; kwargs...)
     F = integrate_function(f, get_elementtype(field, grid))
-    _postprocess(F(f, field, grid; kwargs...))
+    F(f, field, grid; kwargs...)
 end
 
 # special version for AD
@@ -273,12 +268,24 @@ end
 # sparsity_pattern #
 ####################
 
-function sparsity_pattern(field::Field, grid::Grid{T}) where {T}
-    K = create_matrix(T, field, grid)
-    Ke = create_matrix(T, field, create_element(field, grid))
-    for eltindex in 1:num_elements(grid)
+function sparsity_pattern(::Type{T}, field::Field, grid::Grid) where {T}
+    nedofs = num_dofs(field, create_element(field, grid))
+    len = nedofs^2 * num_elements(grid)
+    I = Vector{Int}(undef, len)
+    J = Vector{Int}(undef, len)
+    V = zeros(T, len)
+    count = 1
+    @inbounds for eltindex in 1:num_elements(grid)
         dofs = get_elementdofs(field, grid, eltindex)
-        add!(K, dofs, Ke)
+        for j in 1:nedofs
+            @simd for i in 1:nedofs
+                I[count] = dofs[i]
+                J[count] = dofs[j]
+                count += 1
+            end
+        end
     end
-    sparse(K)
+    m = n = num_dofs(field, grid)
+    sparse(I, J, V, m, n)
 end
+sparsity_pattern(field::Field, grid::Grid{T}) where {T} = sparsity_pattern(T, field, grid)

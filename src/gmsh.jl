@@ -1,6 +1,6 @@
 import GmshReader
 
-function from_gmsh(nodeset::GmshReader.NodeSet) where {T}
+function from_gmsh(nodeset::GmshReader.NodeSet)
     dim = nodeset.dim
     map(v -> Vec{dim}(i -> v[i]), nodeset.coord)
 end
