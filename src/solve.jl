@@ -41,21 +41,24 @@ function nlsolve!(
         f!,
         U::AbstractVector{T},
         dirichlet::AbstractVector{Bool},
-        args...;
+        parameter = nothing;
         maxiter::Int = 20,
         tol::Real = 1e-8,
         symmetric::Bool = false,
     ) where {T <: Real}
     @assert length(U) == length(dirichlet)
-    n = length(U)
-    R = zeros(T, n)
-    dU = zeros(T, n)
-    J = spzeros(T, n, n)
+
+    ndofs = length(U)
+    R = zeros(T, ndofs)
+    dU = zeros(T, ndofs)
+    J = spzeros(T, ndofs, ndofs)
     fdofs = findall(.!dirichlet)
+
     history = Float64[]
     local r0::Float64
+
     for step in 1:maxiter
-        f!(R, J, U, args...)
+        parameter===nothing ? f!(R, J, U) : f!(R, J, U, parameter)
 
         R′ = R[fdofs]
         if step == 1
