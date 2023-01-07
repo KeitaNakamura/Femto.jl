@@ -17,6 +17,9 @@ Base.one(::Type{ScalarGradient{T, G}}) where {T, G} = one(T)
 for op in (:+, :-, :*, :/)
     @eval Base.$op(a::ScalarGradient, b::ScalarGradient) = $op(a.scalar, b.scalar)
 end
+for op in (:+, :-)
+    @eval Base.$op(a::ScalarGradient) = $op(a.scalar)
+end
 
 ∇(x::ScalarGradient) = x.gradient
 
