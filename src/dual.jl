@@ -12,6 +12,7 @@ Base.convert(::Type{T}, x::ScalarGradient) where {T <: Real} = convert(T, x.scal
 Base.convert(::Type{ScalarGradient{T, G}}, x::ScalarGradient{T, G}) where {T <: Real, G} = x
 Base.float(x::ScalarGradient) = float(x.scalar)
 Base.zero(::Type{ScalarGradient{T, G}}) where {T, G} = ScalarGradient(zero(T), zero(G))
+Base.one(::Type{ScalarGradient{T, G}}) where {T, G} = one(T)
 
 for op in (:+, :-, :*, :/)
     @eval Base.$op(a::ScalarGradient, b::ScalarGradient) = $op(a.scalar, b.scalar)

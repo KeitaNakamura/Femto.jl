@@ -23,6 +23,7 @@ function allshapes()
     )
 end
 
+include("dual.jl")
 include("utils.jl")
 
 include("shapes.jl")
