@@ -1,4 +1,20 @@
 @testset "Dual values" begin
+    @testset "ScalarGradient" begin
+        for T in (Float32, Float64)
+            s1 = rand(T)
+            s2 = rand(T)
+            x1 = Femto.ScalarGradient(s1, rand(T))
+            x2 = Femto.ScalarGradient(s2, rand(T))
+            for op in (+, -, *, /)
+                @test (@inferred op(x1, x2))::T == op(s1, s2)
+                @test (@inferred op(x1, s2))::T == op(s1, s2)
+                @test (@inferred op(s1, x2))::T == op(s1, s2)
+            end
+            for op in (+, -)
+                @test (@inferred op(x1))::T == op(s1)
+            end
+        end
+    end
     @testset "Automatic differentiation" begin
         for T in (Float32, Float64)
             # ScalarGradient
