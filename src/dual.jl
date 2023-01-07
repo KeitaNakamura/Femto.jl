@@ -10,8 +10,8 @@ end
 Base.promote_rule(::Type{<: ScalarGradient{T}}, ::Type{U}) where {T <: Real, U <: Real} = promote_type(T, U)
 Base.convert(::Type{T}, x::ScalarGradient) where {T <: Real} = convert(T, x.scalar)
 Base.convert(::Type{ScalarGradient{T, G}}, x::ScalarGradient{T, G}) where {T <: Real, G} = x
+Base.float(x::ScalarGradient) = float(x.scalar)
 Base.zero(::Type{ScalarGradient{T, G}}) where {T, G} = ScalarGradient(zero(T), zero(G))
-Base.AbstractFloat(x::ScalarGradient) = AbstractFloat(x.scalar)
 
 for op in (:+, :-, :*, :/)
     @eval Base.$op(a::ScalarGradient, b::ScalarGradient) = $op(a.scalar, b.scalar)
