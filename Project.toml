@@ -19,7 +19,7 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 [compat]
 BlockArrays = "0.16"
 ForwardDiff = "0.10"
-GmshReader = "0.2"
+GmshReader = "0.3"
 MappedArrays = "0.4"
 Reexport = "1"
 StaticArrays = "1"
