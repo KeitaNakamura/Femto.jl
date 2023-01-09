@@ -57,7 +57,6 @@ export
     Grid,
     num_allnodes,
     get_allnodes,
-    get_allnodes_flatten,
     get_connectivities,
     get_connectivity,
     get_dofs,
