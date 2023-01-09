@@ -1,7 +1,7 @@
 name = "Femto"
 uuid = "8a6dffb5-f0a3-43b0-807d-ee99672b66b8"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.11.1"
+version = "0.11.2"
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
@@ -19,7 +19,7 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 [compat]
 BlockArrays = "0.16"
 ForwardDiff = "0.10"
-GmshReader = "0.2"
+GmshReader = "0.3"
 MappedArrays = "0.4"
 Reexport = "1"
 StaticArrays = "1"

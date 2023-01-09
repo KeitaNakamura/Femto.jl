@@ -66,7 +66,7 @@ function from_gmsh(gmshfile::GmshReader.GmshFile)
 end
 
 function readgmsh(filename::String)
-    file = GmshReader.readgmsh(filename; fixsurface = true)
+    file = GmshReader.readgmsh(filename; outward_surface_normals = true)
     nodes, physicalgroups = from_gmsh(file)
     generate_gridset(nodes, physicalgroups)
 end
