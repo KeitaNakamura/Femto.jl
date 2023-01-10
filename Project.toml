@@ -1,7 +1,7 @@
 name = "Femto"
 uuid = "8a6dffb5-f0a3-43b0-807d-ee99672b66b8"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.11.2"
+version = "0.11.3"
 
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
@@ -10,6 +10,7 @@ GmshReader = "bf82f66e-8fcd-4ce9-a12d-a25ca77d3b00"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MappedArrays = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
