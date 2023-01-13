@@ -110,7 +110,7 @@ function _connectivity(::Hex27, I::CartesianIndex{3})
      CI(i+1,j,k), CI(i,j+1,k), CI(i,j,k+1), CI(i+2,j+1,k), CI(i+2,j,k+1), CI(i+1,j+2,k), CI(i+2,j+2,k+1), CI(i,j+2,k+1), CI(i+1,j,k+2), CI(i,j+1,k+2), CI(i+2,j+1,k+2), CI(i+1,j+2,k+2),
      CI(i+1,j+1,k), CI(i+1,j,k+1), CI(i,j+1,k+1), CI(i+2,j+1,k+1), CI(i+1,j+2,k+1), CI(i+1,j+1,k+2), CI(i+1,j+1,k+1))
 end
-function generate_connectivities(shape::Shape, nodeindices::AbstractArray{Int})
+function generate_connectivities(shape::Shape, nodeindices::AbstractArray{Int})::Vector{Index{num_nodes(shape)}}
     primaryinds = primaryindices(size(nodeindices), get_order(shape))
     map(CartesianIndices(size(primaryinds) .- 1)) do I
         Index(broadcast(getindex, Ref(nodeindices), _connectivity(shape, primaryinds[I])))
