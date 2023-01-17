@@ -77,31 +77,33 @@ function integrate(f, element::Element)
 end
 
 ## integrate!
-function integrate!(f, A::AbstractMatrix, field::Field, element::Element; symmetric::Bool=false)
-    for qp in 1:num_quadpoints(element)
-        integrate!(f, A, field, element, qp; symmetric)
-    end
-    if symmetric
-        @assert size(A, 1) == size(A, 2)
-        @inbounds for j in 1:size(A, 2)
-            for i in 1:j-1
-                A[j,i] = A[i,j]
-            end
+function symmetrize!(A::AbstractMatrix)
+    @assert size(A, 1) == size(A, 2)
+    @inbounds for j in 1:size(A, 2)
+        for i in 1:j-1
+            A[j,i] = A[i,j]
         end
     end
     A
 end
+function integrate!(f, A::AbstractMatrix, field::Field, element::Element; symmetric::Bool=false)
+    for qp in 1:num_quadpoints(element)
+        @inbounds integrate!(f, A, field, element, qp, symmetric)
+    end
+    symmetric && symmetrize!(A)
+    A
+end
 function integrate!(f, A::AbstractVector, field::Field, element::Element)
     for qp in 1:num_quadpoints(element)
-        integrate!(f, A, field, element, qp)
+        @inbounds integrate!(f, A, field, element, qp)
     end
     A
 end
 
 ## integrate! at each quadrature point
 # BodyElementLike
-function integrate!(f, A::AbstractMatrix, field::Field, element::BodyElementLike, qp::Int; symmetric::Bool=false)
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+function integrate!(f, A::AbstractMatrix, field::Field, element::BodyElementLike, qp::Int, symmetric::Bool)
+    @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = u = shape_values(field, element, qp)
         @assert size(A) == (length(v), length(u))
@@ -115,7 +117,7 @@ function integrate!(f, A::AbstractMatrix, field::Field, element::BodyElementLike
     A
 end
 function integrate!(f, A::AbstractVector, field::Field, element::BodyElementLike, qp::Int)
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field, element, qp)
         @assert length(A) == length(v)
@@ -137,7 +139,7 @@ function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, eleme
     F, K
 end
 function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, element::BodyElementLike, du, qp::Int)
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field, element, qp)
         @assert length(F) == length(v) == size(K,1) == size(K,2)
@@ -154,7 +156,7 @@ end
 
 # FaceElementLike
 function integrate!(f, A::AbstractVector, field::Field, element::FaceElementLike, qp::Int)
-    @boundscheck 1 ≤ qp ≤ num_quadpoints(element)
+    @boundscheck @assert 1 ≤ qp ≤ num_quadpoints(element)
     @inbounds begin
         v = shape_values(field, element, qp)
         @assert length(A) == length(v)
