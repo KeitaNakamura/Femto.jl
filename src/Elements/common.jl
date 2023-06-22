@@ -130,8 +130,8 @@ end
 
 # special version for AD
 function integrate!(f, F::AbstractVector, K::AbstractMatrix, field::Field, element::BodyElementLike, U::SVector)
-    T = typeof(ForwardDiff.Tag(interpolate, eltype(U)))
-    dU = ForwardDiff.dualize(T, U)
+    Tg = ForwardDiff.Tag(interpolate, eltype(U))
+    dU = SArray(Tensorial.dualize(Tg, Tensor(U)))
     for qp in 1:num_quadpoints(element)
         du = interpolate(field, element, dU, qp)
         @inbounds integrate!(f, F, K, field, element, du, qp)
