@@ -38,11 +38,10 @@
         a = rand()
         b = rand()
         c = rand()
-        history = nlsolve!(U, dirichlet) do R, J, U
-            @. R = a*U^2 + b*U + c
-            @. J = 2a*U + b
-        end
+        R!(R, U) = @. R = a*U^2 + b*U + c
+        J!(J, U) = @. J = 2a*U + b
+        converged = nlsolve!(R!, J!, U, dirichlet)
+        @test converged
         @test U[1] ≈ (-b+sqrt(b^2-4a*c)) / 2a
-        @test norm(history) ≈ 1.028666021302189
     end
 end

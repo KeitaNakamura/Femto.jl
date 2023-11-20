@@ -1,3 +1,5 @@
+using NewtonSolvers
+
 function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::AbstractMatrix, dirichlet::AbstractVector{Bool})
     @assert length(U) == size(K, 1) == size(K, 2) == length(F) == length(dirichlet)
     @inbounds for j in Iterators.filter(j -> dirichlet[j], eachindex(dirichlet))
@@ -21,7 +23,7 @@ end
 
 function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector)
     @assert length(U) == size(K, 1) == size(K, 2) == length(F)
-    @inbounds U .= K \ F
+    U .= K \ F
     U
 end
 
@@ -38,42 +40,42 @@ function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, diri
 end
 
 function nlsolve!(
-        f!,
+        R!,
+        J!,
         U::AbstractVector{T},
-        dirichlet::AbstractVector{Bool},
-        parameter = nothing;
+        dirichlet::AbstractVector{Bool};
         maxiter::Int = 20,
         tol::Real = 1e-8,
+        backtracking::Bool = true,
+        showtrace::Bool = false,
         symmetric::Bool = false,
     ) where {T <: Real}
     @assert length(U) == length(dirichlet)
 
     ndofs = length(U)
-    R = zeros(T, ndofs)
-    dU = zeros(T, ndofs)
-    J = spzeros(T, ndofs, ndofs)
     fdofs = findall(.!dirichlet)
+    R = zeros(T, ndofs)
+    J = spzeros(T, ndofs, ndofs)
 
-    history = Float64[]
-    local r0::Float64
-
-    for step in 1:maxiter
-        parameter===nothing ? f!(R, J, U) : f!(R, J, U, parameter)
-
-        R′ = R[fdofs]
-        if step == 1
-            r0 = norm(R′)
-            r0<tol && return history
-        end
-        push!(history, norm(R′)/r0)
-        history[end]<tol && return history
-
-        if symmetric
-            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(Symmetric(J), fdofs), R′)
-        else
-            @inbounds linsolve!(view(dU, fdofs), get_K_fdofs(J, fdofs), R′)
-        end
-        @. U -= dU
+    function R_mod!(R, U)
+        R!(R, U)
+        R[dirichlet] .= 0
     end
-    error("not converged")
+
+    function linsolve(x, A, b)
+        x′ = view(x, fdofs)
+        A′ = get_K_fdofs(symmetric ? Symmetric(A) : A, fdofs)
+        b′ = b[fdofs]
+        linsolve!(x′, A′, b′)
+    end
+
+    converged = NewtonSolvers.solve!(R_mod!, J!, R, J, U;
+                                     linsolve,
+                                     backtracking,
+                                     showtrace,
+                                     f_tol = tol,
+                                     maxiter = maxiter)
+    converged || @warn "not converged in Newton iteration"
+
+    converged
 end
