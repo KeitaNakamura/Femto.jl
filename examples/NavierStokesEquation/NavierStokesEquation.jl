@@ -38,28 +38,26 @@ function NavierStokesEquation(
             dirichlet[dofs] .= true
         end
 
-        nlsolve!(U, dirichlet) do R, J, U
+        function R!(R, U)
             R .= 0
-            J .= K # reset sparsity pattern
-            J .= 0
-            if autodiff
-                integrate!(R, J, field, grid, U) do i, (v,q), (u,p)
-                    v ⋅ (∇(u) ⋅ u)
-                end
-            else
-                Ũ = collect(interpolate(field, grid, U))
-                integrate!(R, field, grid) do i, (v,q)
-                    ũ, p̃ = Ũ[i]
-                    v ⋅ (∇(ũ) ⋅ ũ)
-                end
-                integrate!(J, field, grid) do i, (v,q), (u,p)
-                    ũ, p̃ = Ũ[i]
-                    v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
-                end
+            Ũ = interpolate(field, grid, U)
+            integrate!(R, field, grid) do i, (v,q)
+                ũ, p̃ = Ũ[i]
+                v ⋅ (∇(ũ) ⋅ ũ)
             end
             R .= R + (M * (U - Uₙ)) / dt + K * U
+        end
+        function J!(J, U)
+            J .= K # reset sparsity pattern
+            J .= 0
+            Ũ = collect(interpolate(field, grid, U))
+            integrate!(J, field, grid) do i, (v,q), (u,p)
+                ũ, p̃ = Ũ[i]
+                v ⋅ (∇(ũ)⋅u + ∇(u)⋅ũ)
+            end
             J .= J + M/dt + K
         end
+        nlsolve!(R!, J!, U, dirichlet)
         Uₙ .= U
 
         if step % 10 == 0
