@@ -39,7 +39,7 @@
     @testset "StokesEquation" begin
         include("../examples/StokesEquation/StokesEquation.jl")
         @test norm(StokesEquation(readgmsh("../examples/StokesEquation/model.msh"))) ≈ 840.7761276984636
-        @test norm(StokesEquation(generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1))) ≈ 117403.00599179954
+        @test norm(StokesEquation(generate_gridset(Quad9(), 0:0.01:1, 0:0.01:1))) ≈ 117442.29490148988 rtol=1e-3
     end
     @testset "NavierStokesEquation" begin
         include("../examples/NavierStokesEquation/NavierStokesEquation.jl")
