@@ -45,7 +45,8 @@ function nlsolve!(
         U::AbstractVector{T},
         dirichlet::AbstractVector{Bool};
         maxiter::Int = 20,
-        tol::Real = 1e-8,
+        f_tol::Real = convert(T, 1e-8),
+        x_tol::Real = zero(T),
         backtracking::Bool = true,
         showtrace::Bool = false,
         symmetric::Bool = false,
@@ -72,9 +73,10 @@ function nlsolve!(
     converged = NewtonSolvers.solve!(R_mod!, J!, R, J, U;
                                      linsolve,
                                      backtracking,
-                                     showtrace,
-                                     f_tol = tol,
-                                     maxiter = maxiter)
+                                     f_tol,
+                                     x_tol,
+                                     maxiter,
+                                     showtrace)
     converged || @warn "not converged in Newton iteration"
 
     converged
