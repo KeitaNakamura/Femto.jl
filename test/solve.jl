@@ -2,7 +2,7 @@
     @testset "linsolve" begin
         Random.seed!(1234)
         ## not symmetric
-        K = sprand(50, 50, 0.2)
+        K = sparse(rand(50, 50))
         F = rand(50)
         dirichlet = rand(Bool, 50)
         # SparseMatrixCSC

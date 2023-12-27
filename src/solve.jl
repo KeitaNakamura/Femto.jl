@@ -1,41 +1,72 @@
 using NewtonSolvers
 
-function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::AbstractMatrix, dirichlet::AbstractVector{Bool})
-    @assert length(U) == size(K, 1) == size(K, 2) == length(F) == length(dirichlet)
-    @inbounds for j in Iterators.filter(j -> dirichlet[j], eachindex(dirichlet))
+function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::AbstractMatrix, ddofs::AbstractVector{Int})
+    @boundscheck checkbounds(F, ddofs)
+    @assert length(U) == size(K, 1) == size(K, 2) == length(F)
+    @inbounds for j in ddofs
         for i in 1:length(F)
             F[i] -= U[j] * K[i, j]
         end
     end
+    @. F[ddofs] = U[ddofs]
+    _modify_stencil!(K, ddofs)
 end
-function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::SparseMatrixCSC, dirichlet::AbstractVector{Bool})
-    @assert length(U) == size(K, 1) == size(K, 2) == length(F) == length(dirichlet)
+
+function dirichlet_to_neumann!(F::AbstractVector, U::AbstractVector, K::SparseMatrixCSC, ddofs::AbstractVector{Int})
+    @boundscheck checkbounds(F, ddofs)
+    @assert length(U) == size(K, 1) == size(K, 2) == length(F)
     rows = rowvals(K)
     vals = nonzeros(K)
-    @inbounds for j in Iterators.filter(j -> dirichlet[j], eachindex(dirichlet))
+    @inbounds for j in ddofs
         for i in nzrange(K, j)
             row = rows[i]
             val = vals[i]
             F[row] -= U[j] * val
         end
     end
+    @. F[ddofs] = U[ddofs]
+    _modify_stencil!(K, ddofs)
 end
 
-function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector)
-    @assert length(U) == size(K, 1) == size(K, 2) == length(F)
-    U .= K \ F
-    U
+function _modify_stencil!(K::AbstractMatrix, ddofs::AbstractVector{Int})
+    @inbounds for j in ddofs
+        K[:,j] .= 0
+        K[j,:] .= 0
+        K[j,j] = 1
+    end
 end
-
-get_K_fdofs(K::AbstractMatrix, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; K[fdofs,fdofs])
-get_K_fdofs(K::Symmetric, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Symmetric(get_K_fdofs(K.data, fdofs), Symbol(K.uplo)))
-get_K_fdofs(K::Diagonal, fdofs::Vector{Int}) = (@_propagate_inbounds_meta; Diagonal(view(diag(K), fdofs)))
+function _modify_stencil!(K::SparseMatrixCSC, ddofs::AbstractVector{Int})
+    rows = rowvals(K)
+    vals = nonzeros(K)
+    jᵈ = 1
+    @inbounds for j in 1:size(K, 2)
+        if jᵈ ≤ length(ddofs) && j == ddofs[jᵈ]
+            for i in nzrange(K, j)
+                row = rows[i]
+                vals[i] = ifelse(row==j, 1, 0)
+            end
+            jᵈ += 1
+        else
+            for i in nzrange(K, j)
+                row = rows[i]
+                idx = searchsortedfirst(ddofs, row)
+                if idx ≤ length(ddofs) && row == ddofs[idx]
+                    vals[i] = 0
+                end
+            end
+        end
+    end
+end
+_modify_stencil!(K::Symmetric, ddofs::AbstractVector{Int}) = _modify_stencil!(parent(K), ddofs)
+_modify_stencil!(K::Diagonal, ddofs::AbstractVector{Int}) = fill!(view(diag(K), ddofs), 1)
 
 function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, dirichlet::AbstractVector{Bool})
-    @assert length(U) == size(K, 1) == size(K, 2) == length(F) == length(dirichlet)
-    dirichlet_to_neumann!(F, U, K, dirichlet)
-    fdofs = findall(.!dirichlet)
-    @inbounds linsolve!(view(U, fdofs), get_K_fdofs(K, fdofs), F[fdofs])
+    linsolve!(U, K, F, findall(dirichlet))
+end
+
+function linsolve!(U::AbstractVector, K::AbstractMatrix, F::AbstractVector, ddofs::AbstractVector{Int})
+    dirichlet_to_neumann!(F, U, K, ddofs)
+    U .= K \ F
     U
 end
 
@@ -56,31 +87,22 @@ function nlsolve!(
     @assert length(U) == length(dirichlet)
 
     ndofs = length(U)
-    fdofs = findall(.!dirichlet)
+    ddofs = findall(dirichlet)
     R = zeros(T, ndofs)
     J = spzeros(T, ndofs, ndofs)
 
     function R_mod!(R, U)
         R!(R, U)
-        R[dirichlet] .= 0
-    end
-
-    function linsolve(x, A, b)
-        x′ = view(x, fdofs)
-        A′ = get_K_fdofs(symmetric ? Symmetric(A) : A, fdofs)
-        b′ = b[fdofs]
-        linsolve!(x′, A′, b′)
+        R[ddofs] .= 0
     end
 
     ch = NewtonSolvers.solve!(R_mod!, J!, R, J, U;
-                              linsolve,
+                              linsolve = (x,A,b) -> linsolve!(x,ifelse(symmetric,Symmetric(A),A),b,ddofs),
                               backtracking,
                               f_tol,
                               x_tol,
-                              dx_tol,
                               iterations,
-                              showtrace,
-                              logall)
+                              showtrace)
     ch.isconverged || @warn "not converged in Newton iteration"
 
     ch
