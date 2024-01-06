@@ -23,7 +23,7 @@ function num_quadpoints(mixed::MixedElement)
     num_quadpoints(get_shape_qr(mixed))
 end
 
-@pure default_quadrature_shape(shapes::Tuple{Vararg{Shape}}) = shapes[argmax(map(get_order, shapes))]
+default_quadrature_shape(shapes::Tuple{Vararg{Shape}}) = shapes[argmax(map(get_order, shapes))]
 
 ####################
 # MixedBodyElement #
@@ -101,7 +101,7 @@ end
 # interpolate #
 ###############
 
-@pure function _sranges(n::Tuple{Vararg{Int}})
+function _sranges(n::Tuple{Vararg{Int}})
     stop = cumsum(n)
     start = @. stop - n + 1
     @. StaticArrays.SUnitRange(start, stop)

@@ -21,8 +21,8 @@ end
 infer_integrate_matrix_eltype(f, args...) = _infer_integrate_matrix_eltype(f, map(typeof, args)...)
 infer_integrate_vector_eltype(f, args...) = _infer_integrate_vector_eltype(f, map(typeof, args)...)
 infer_integrate_eltype(f, args...) = _infer_integrate_eltype(f, map(typeof, args)...)
-@pure _mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
-@pure function _infer_integrate_matrix_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElementLike{T}}
+_mul_type(::Type{T}, ::Type{U}) where {T, U} = Base._return_type(*, Tuple{T, U})
+function _infer_integrate_matrix_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElementLike{T}}
     Tv = Tu = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Tv, Tu}
     ElType = _mul_type(Base._return_type(f, Args), T)
@@ -32,7 +32,7 @@ infer_integrate_eltype(f, args...) = _infer_integrate_eltype(f, map(typeof, args
     end
     ElType
 end
-@pure function _infer_integrate_vector_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElementLike{T}}
+function _infer_integrate_vector_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, Elt <: BodyElementLike{T}}
     Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
@@ -42,7 +42,7 @@ end
     end
     ElType
 end
-@pure function _infer_integrate_vector_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, dim, Elt <: FaceElementLike{T, dim}}
+function _infer_integrate_vector_eltype(f, ::Type{Fld}, ::Type{Elt}) where {Fld, T, dim, Elt <: FaceElementLike{T, dim}}
     Tv = eltype(Base._return_type(shape_values, Tuple{Fld, Elt, Int}))
     Args = Tuple{Int, Vec{dim, T}, Tv}
     ElType = _mul_type(Base._return_type(f, Args), T)
@@ -52,7 +52,7 @@ end
     end
     ElType
 end
-@pure function _infer_integrate_eltype(f, ::Type{Elt}) where {T, dim, Elt <: Element{T, dim}}
+function _infer_integrate_eltype(f, ::Type{Elt}) where {T, dim, Elt <: Element{T, dim}}
     Args = Tuple{Int}
     ElType = _mul_type(Base._return_type(f, Args), T)
     if ElType == Union{} || ElType == Any
@@ -172,7 +172,7 @@ function integrate(f, field::Field, element::Element; kwargs...)
     F(f, field, element; kwargs...)
 end
 
-@pure function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
+function integrate_function(f, ::Type{Elt}) where {Elt <: Element}
     nargs = first(methods(f)).nargs - 1
     # integrate
     Elt <: BodyElementLike && nargs == 3 && return integrate_matrix

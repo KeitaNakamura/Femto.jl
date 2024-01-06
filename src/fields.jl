@@ -6,11 +6,11 @@ struct ScalarField{order} <: SingleField{order} end
 struct VectorField{order} <: SingleField{order} end
 const Sf = ScalarField
 const Vf = VectorField
-@pure ScalarField() = ScalarField{nothing}()
-@pure VectorField() = VectorField{nothing}()
-@pure ScalarField(order::Int) = ScalarField{order}()
-@pure VectorField(order::Int) = VectorField{order}()
-@pure get_order(::SingleField{order}) where {order} = order
+ScalarField() = ScalarField{nothing}()
+VectorField() = VectorField{nothing}()
+ScalarField(order::Int) = ScalarField{order}()
+VectorField(order::Int) = VectorField{order}()
+get_order(::SingleField{order}) where {order} = order
 
 struct MixedField{N, Fields <: NTuple{N, SingleField}} <: Field
     fields::Fields
