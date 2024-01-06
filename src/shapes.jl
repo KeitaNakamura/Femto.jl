@@ -16,12 +16,12 @@ end
     SVector(ntuple(i->A[i,:], Val(N)))
 end
 
-@pure _get_lower_shapes(x::Tuple, shape::Shape) = _get_lower_shapes((shape, x...), decrease_order(shape))
+@assume_effects :foldable _get_lower_shapes(x::Tuple, shape::Shape) = _get_lower_shapes((shape, x...), decrease_order(shape))
 _get_lower_shapes(x::Tuple, ::Nothing) = x
 get_lower_shapes(shape::Shape) = _get_lower_shapes((), shape)
 
 mixed(shapes::Shape...) = shapes
-@pure samefamily(shapes::Shape...) = length(unique(map(supertype∘typeof, shapes)))==1
+@assume_effects :foldable samefamily(shapes::Shape...) = length(unique(map(supertype∘typeof, shapes)))==1
 
 ########
 # Line #
@@ -136,7 +136,7 @@ struct Line4 <: Line end
 get_order(::Line4) = 3
 num_nodes(::Line4) = 4
 num_quadpoints(::Line4) = 3
-# @pure decrease_order(::Line4) = Line2()
+# @assume_effects :foldable decrease_order(::Line4) = Line2()
 get_lower_shapes(::Line4) = (Line2(), NoShape(), Line4())
 
 function get_local_coordinates(::Type{T}, ::Line4) where {T}
