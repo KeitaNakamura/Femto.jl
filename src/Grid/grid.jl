@@ -172,7 +172,7 @@ end
 # integrate #
 #############
 
-@pure function convert_integrate_function(f, eltindex)
+function convert_integrate_function(f, eltindex)
     @inline function f′(qp, args...)
         f(CartesianIndex(qp, eltindex), args...)
     end

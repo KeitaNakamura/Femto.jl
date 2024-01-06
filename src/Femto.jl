@@ -8,7 +8,7 @@ using BlockArrays
 using ForwardDiff
 @reexport using Tensorial
 
-using Base: @pure, @_inline_meta, @_propagate_inbounds_meta
+using Base: @assume_effects, @_inline_meta, @_propagate_inbounds_meta
 @reexport using LinearAlgebra
 @reexport using SparseArrays
 
