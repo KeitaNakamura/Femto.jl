@@ -44,7 +44,7 @@ function nlsolve!(
         J!,
         U::AbstractVector{T},
         dirichlet::AbstractVector{Bool};
-        maxiter::Int = 20,
+        iterations::Int = 1000,
         f_tol::Real = sqrt(eps(T)),
         x_tol::Real = zero(T),
         dx_tol::Real = zero(T),
@@ -78,7 +78,7 @@ function nlsolve!(
                               f_tol,
                               x_tol,
                               dx_tol,
-                              maxiter,
+                              iterations,
                               showtrace,
                               logall)
     ch.isconverged || @warn "not converged in Newton iteration"
