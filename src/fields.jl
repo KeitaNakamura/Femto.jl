@@ -23,7 +23,18 @@ mixed(fields::SingleField...) = MixedField(fields)
 dofindices(::ScalarField, ::Val, nodeindex::Int) = nodeindex
 dofindices(::ScalarField, ::Val, conn::Index) = conn
 # VectorField
-dofindices(::VectorField, ::Val{dim}, nodeindex::Int) where {dim} = Index(ntuple(d -> dim*(nodeindex-1) + d, Val(dim)))
-function dofindices(fieldtype::VectorField, ::Val{dim}, conn::Index{L}) where {dim, L}
-    Index{dim*L}(Iterators.flatten(map(i -> dofindices(fieldtype, Val(dim), i), conn))...)
+@generated function dofindices(::VectorField, ::Val{dim}, nodeindex::Int) where {dim}
+    inds = [:(offset + $d) for d in 1:dim]
+    quote
+        @_inline_meta
+        offset = dim * (nodeindex - 1)
+        Index{dim}($(inds...))
+    end
+end
+@generated function dofindices(fieldtype::VectorField, ::Val{dim}, conn::Index{L}) where {dim, L}
+    inds = [:(dofindices(fieldtype, Val(dim), conn[$i])...) for i in 1:L]
+    quote
+        @_inline_meta
+        Index{dim*L}($(inds...))
+    end
 end
