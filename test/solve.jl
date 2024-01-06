@@ -40,8 +40,8 @@
         c = rand()
         R!(R, U) = @. R = a*U^2 + b*U + c
         J!(J, U) = @. J = 2a*U + b
-        converged = nlsolve!(R!, J!, U, dirichlet)
-        @test converged
+        ch = nlsolve!(R!, J!, U, dirichlet, f_tol=1e-10)
+        @test ch.isconverged
         @test U[1] ≈ (-b+sqrt(b^2-4a*c)) / 2a
     end
 end
